@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		{% load staticfiles %}
+		<link rel="stylesheet" type="text/css" href=" {% static 'library/bootstrap/css/bootstrap.css' %}">
+		<link rel="stylesheet" type="text/css" href=" {% static 'css/base.css' %}">
+		<link href='http://fonts.googleapis.com/css?family=Tangerine:700' rel='stylesheet' type='text/css'>
+		{% block css %}
+		{% endblock css %}
+		{% block page_title %}<title>Diary Exchange</title>{% endblock page_title %}
+		
+	</head>
+	<body>
+	<div id = 'base'>		
+	<div id = 'page'>			
+	<div class = 'container-fluid'>
+		<div class = 'row'>
+			<div class = 'col-md-12' id = 'header'>				
+				<div class = 'container'>
+					<h1 id = 'logo'><a href="/">Diary Exchange</a></h1>
+					{% if user.is_authenticated %}
+						<a href = '/logout'>logout</a> | <a href = '/entry/new/'>new entry</a>
+					{% else %}
+					    <a href = '/login'>login</a>
+					{% endif %}
+
+				</div>
+			</div>				
+		</div>
+		<div class = 'container'>					
+			<div class = 'row'>
+				<div class = 'col-md-12' id = 'page-content'>
+					{% block content %}{% endblock content %}
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+	<div id = 'footer'>
+		<h5 title = 'Built by Jim Chim, a gift for Chloe Tsang'>Built With Love &copy; 2014</h5>
+	</div>
+	</div>			
+	</body>
+	<script type="text/javascript" src = '{% static "library/jquery.js" %}'></script>
+	<script type="text/javascript">
+		/*$(document).ready(function(){
+			$('#test').css('color','red')
+		})*/
+	</script>
+	{% block script %}{% endblock script %}
+</html>

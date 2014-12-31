@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+	
+	{% for entry in entries %}
+		<h1><a href="{% url 'diary:entry_slug' entry.id entry.slug  %}">{{ entry.subject }}</a></h1>
+		<p>{{ entry.body }}</p>
+	{% endfor %}
+	{# {{ message|safe }} #}
+	
+
+{% endblock content %}

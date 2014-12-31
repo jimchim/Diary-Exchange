@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+	
+	{% if entry %}
+		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post'>
+			{% csrf_token %}
+			<input class = 'form-control' type = 'text' name = 'entry-subject' value = '{{ entry.subject }}' autocomplete = 'off'>
+			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body }}</textarea>
+			<input type = 'hidden' value = 'False' name = 'entry-delete'>
+			<input type = 'submit' value = 'Update Entry' class = 'btn btn-block btn-warning'>
+		</form>
+
+		<button id = 'delete-entry' class = 'btn btn-danger btn-lg'>Delete Entry</button>
+
+
+	{% else %}
+		<h1>This is edit entry page</h1>
+	{% endif %}
+
+
+{% endblock content %}
+
+{% block script %}
+	
+	<script type="text/javascript">
+		$(document).ready(function(){
+			$('#delete-entry').click(function(){
+				var delEntry = confirm('Delete this diary entry?')
+				if (delEntry) {
+					$("input[name='entry-delete']").val('True')										
+					$('#edit-entry-form').submit()
+				}
+			})
+		})
+	</script>
+
+{% endblock script %}

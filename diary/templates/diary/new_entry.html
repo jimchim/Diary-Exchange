@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+	<form action = '{% url "diary:new_entry" %}' method = 'post' >
+		{% csrf_token %}
+		<input type = 'text' name = 'new-subject' placeholder = 'Subject' class = 'form-control' autocomplete = 'off'>
+		<textarea name = 'new-body' class = 'form-control'></textarea>
+		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>
+	</form>
+{% endblock content %}

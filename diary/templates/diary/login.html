@@ -1,10 +1,36 @@
 {% extends 'base.html' %}
+
+{% block css %}
+
+	<style type="text/css">
+		#login-form input{
+			margin-top: 1em;
+		}
+
+		#login-form input[type='submit']{
+			margin-bottom: 1em;
+		}
+
+		#login-form-wrapper {
+			background-color: #EDF0F1;
+			border-radius: 0.5em;
+			border: 1px solid #688E92;
+		}
+
+	</style>
+
+{% endblock css %}
+
+
 {% block content %}
-	<form action = "{% url 'diary:login' %}" method="post">
-		{% csrf_token %}
-		<input type = 'text' name = 'login_username' placeholder = 'Username'>
-		<input type = 'password' name = 'login_password' placeholder = 'Password'>
-		<input type = 'submit' value = 'Login'>
-	</form>
+	
+	<div class = 'col-md-8 col-md-offset-2' id = 'login-form-wrapper'>
+		<form action = "{% url 'diary:login' %}" method="post" id = 'login-form'>
+			{% csrf_token %}
+			<input type = 'text' name = 'login_username' placeholder = 'Username' class = 'form-control'>
+			<input type = 'password' name = 'login_password' placeholder = 'Password' class = 'form-control'>
+			<input type = 'submit' value = 'Login' class = 'btn btn-success center-block'>
+		</form>
+	</div>
 
 {% endblock content %}

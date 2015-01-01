@@ -1,11 +1,22 @@
 {% extends 'base.html' %}
 
+{% block css %}
+
+	<style type="text/css">
+		#entries a {
+			color: #F37074;			
+		}
+	</style>
+
+{% endblock css %}
+
 {% block content %}
-	
+	<span id = 'entries'> 
 	{% for entry in entries %}
 		<h1><a href="{% url 'diary:entry_slug' entry.id entry.slug  %}">{{ entry.subject }}</a></h1>
-		<p>{{ entry.body }}</p>
+		<p>{{ entry.body|linebreaks|truncatechars:300 }}</p>		
 	{% endfor %}
+	</span>
 	{# {{ message|safe }} #}
 	
 

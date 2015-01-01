@@ -1,10 +1,23 @@
 {% extends 'base.html' %}
 
+{% block css %}
+	<style type="text/css">
+		.meta-data {
+			color: #888;
+		}
+
+		p {
+			color: #444;
+		}
+	</style>
+{% endblock css %}
+
 {% block content %}
 	{% if entry%}
-		<h2>Subject: {{ entry.subject }}<a href="{% url 'diary:entry_edit_slug' entry.id entry.slug %}"><span class = 'glyphicon glyphicon-pencil'></span></a></h2>
-		<p>Posted by: {{ entry.author.first_name }} at {{ entry.published }} | Last Edited: {{ entry.edited }}</p>
-		<p>Body: {{ entry.body}}</p>
+		<h2>{{ entry.subject }}</h2>
+		<p class = 'meta-data'>Posted by: {{ entry.author.first_name }} at {{ entry.published }} | Last Edited: {{ entry.edited }}  <a href="{% url 'diary:entry_edit_slug' entry.id entry.slug %}">edit{# <span class = 'glyphicon glyphicon-pencil'></span> #}</a></p>
+
+		<p>{{ entry.body|linebreaks }}</p>		
 	{% else %}
 		<h1>Invalid Entry - No data to show</h1>
 	{% endif %}

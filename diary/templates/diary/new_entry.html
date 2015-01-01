@@ -1,10 +1,43 @@
 {% extends 'base.html' %}
 
+{% block css %}
+	
+	<style type="text/css">
+
+		.form-control, .btn {
+			border-radius: 0;
+			margin-top: 1em;
+		}
+
+		textarea {
+			min-height: 30em;
+		}
+
+	</style>
+
+{% endblock css %}
+
 {% block content %}
 	<form action = '{% url "diary:new_entry" %}' method = 'post' >
 		{% csrf_token %}
-		<input type = 'text' name = 'new-subject' placeholder = 'Subject' class = 'form-control' autocomplete = 'off'>
-		<textarea name = 'new-body' class = 'form-control'></textarea>
+		<input type = 'text' name = 'new-subject' placeholder = 'Title' class = 'form-control' autocomplete = 'off'>
+		<textarea name = 'new-body' class = 'form-control' placeholder = 'Dear Diary,'></textarea>
 		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>
 	</form>
 {% endblock content %}
+
+{% block script %}
+	{% load staticfiles %}
+
+	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
+
+	<script type="text/javascript">
+		$(document).ready(function(){			
+
+			$('#edit-entry-form textarea').focus(function(){
+				$(this).autosize();
+			})
+		})		
+	</script>	
+
+{% endblock script %}

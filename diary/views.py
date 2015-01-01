@@ -27,7 +27,7 @@ def index(request):
 	else:
 		msg = 'Get!'		
 
-	entries = Entry.objects.all()	
+	entries = Entry.objects.all().order_by('-published')	
 
 	return render(request, 'diary/index.html', {'message': msg, 'entries': entries})
 

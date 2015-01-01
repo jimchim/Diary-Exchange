@@ -1,28 +1,49 @@
 {% extends 'base.html' %}
 
+{% block css %}
+	<style type="text/css">
+		.form-control, .btn {
+			border-radius: 0;
+			margin-top: 1em;
+		}
+
+		textarea {
+			min-height: 20em;
+			max-width: 100%;
+			resize: none;
+		}
+
+
+
+
+	</style>
+{% endblock css %}
+
 {% block content %}
 	
 	{% if entry %}
 		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post'>
 			{% csrf_token %}
+			<button id = 'delete-entry' class = 'btn btn-danger'>Delete Entry</button>
+			<input type = 'submit' value = 'Update Entry' class = 'btn btn-warning pull-right'>
 			<input class = 'form-control' type = 'text' name = 'entry-subject' value = '{{ entry.subject }}' autocomplete = 'off'>
 			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body }}</textarea>
 			<input type = 'hidden' value = 'False' name = 'entry-delete'>
-			<input type = 'submit' value = 'Update Entry' class = 'btn btn-block btn-warning'>
 		</form>
 
-		<button id = 'delete-entry' class = 'btn btn-danger btn-lg'>Delete Entry</button>
 
 
 	{% else %}
 		<h1>This is edit entry page</h1>
 	{% endif %}
 
+	
 
 {% endblock content %}
 
 {% block script %}
-	
+	{% load staticfiles %}
+	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
 	<script type="text/javascript">
 		$(document).ready(function(){
 			$('#delete-entry').click(function(){
@@ -30,9 +51,21 @@
 				if (delEntry) {
 					$("input[name='entry-delete']").val('True')										
 					$('#edit-entry-form').submit()
+					return false
+					
 				}
+
+				else {
+					return false
+				}
+
+
 			})
-		})
+
+			$('#edit-entry-form textarea').focus(function(){
+				$(this).autosize();
+			})
+		})		
 	</script>
 
 {% endblock script %}

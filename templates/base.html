@@ -31,6 +31,13 @@
 			<div class = 'row'>
 				<div class = 'col-md-6 col-md-offset-3' id = 'page-content'>
 					{% block content %}{% endblock content %}
+					{% if messages %}
+						<ul class="messages">
+							{% for message in messages %}
+								<h1{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</h1>
+							{% endfor %}
+						</ul>
+					{% endif %}						
 				</div>
 			</div>
 		</div>

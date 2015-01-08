@@ -13,22 +13,40 @@
 			resize: none;
 		}
 
+		img {
+			width: 100%;
+			margin-top: 1em;
+		}
+
+		img.half-size {
+			width: 50%;
+		}
+
 
 
 
 	</style>
 {% endblock css %}
 
-{% block content %}
-	
+{% block content %}	
 	{% if entry %}
-		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post'>
+		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post' enctype="multipart/form-data">
 			{% csrf_token %}
 			<button id = 'delete-entry' class = 'btn btn-danger'>Delete Entry</button>
 			<input type = 'submit' value = 'Update Entry' class = 'btn btn-warning pull-right'>
 			<input class = 'form-control' type = 'text' name = 'entry-subject' value = '{{ entry.subject }}' autocomplete = 'off'>
-			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body }}</textarea>
+			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body}}</textarea>
 			<input type = 'hidden' value = 'False' name = 'entry-delete'>
+
+			<input class = 'form-control' type = 'hidden' placeholder = 'Selected Photo' name = 'selected-entry-photo'>
+
+			<input class = 'form-control' type = 'file' name = 'new-entry-photo' multiple>
+			{% if entry.entryphoto_set.first != None %}
+				{% for picture in entry.entryphoto_set.all %}
+					{# <h1>{{ picture.id }}</h1> #}
+					<img src="{{picture.image_file.url}}" id = '{{ picture.id }}' >
+				{% endfor%}
+			{% endif %}
 		</form>
 
 
@@ -64,6 +82,28 @@
 
 			$('#edit-entry-form textarea').focus(function(){
 				$(this).autosize();
+			})
+
+			$('img').click(function(){				
+				var selectPhotoIDs = $("input[name='selected-entry-photo']").val()				
+				var thisID = $(this).attr('id')
+				var IDs = selectPhotoIDs.split(',')				
+				if (IDs.indexOf(thisID) == -1) {					
+					var photoIDToAdd = thisID + ','
+					selectPhotoIDs += photoIDToAdd
+					$("input[name='selected-entry-photo']").val(selectPhotoIDs)	
+					$(this).addClass('half-size')
+				} 
+
+				else {
+					/*alert(IDs)
+					alert(IDs)*/
+					IDs.splice(IDs.indexOf(thisID),1)
+					$("input[name='selected-entry-photo']").val(IDs)					
+					$(this).removeClass('half-size')
+				}
+				
+				
 			})
 		})		
 	</script>

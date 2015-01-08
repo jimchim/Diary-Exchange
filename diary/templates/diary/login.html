@@ -23,14 +23,22 @@
 
 
 {% block content %}
+	{% if messages %}
+		<ul class="messages">
+			{% for message in messages %}
+				<h1{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</h1>
+			{% endfor %}
+		</ul>
+	{% endif %}						
 	
 	<div class = 'col-md-8 col-md-offset-2' id = 'login-form-wrapper'>
-		<form action = "{% url 'diary:login' %}" method="post" id = 'login-form'>
+		<form action = "{% url 'diary:login' %}?next={{next}}" method="post" id = 'login-form'>
 			{% csrf_token %}
 			<input type = 'text' name = 'login_username' placeholder = 'Username' class = 'form-control'>
 			<input type = 'password' name = 'login_password' placeholder = 'Password' class = 'form-control'>
 			<input type = 'submit' value = 'Login' class = 'btn btn-success center-block'>
 		</form>
-	</div>
+	</div>	
+
 
 {% endblock content %}

@@ -18,10 +18,11 @@
 {% endblock css %}
 
 {% block content %}
-	<form action = '{% url "diary:new_entry" %}' method = 'post' >
+	<form action = '{% url "diary:new_entry" %}' method = 'post' enctype="multipart/form-data">
 		{% csrf_token %}
 		<input type = 'text' name = 'new-subject' placeholder = 'Title' class = 'form-control' autocomplete = 'off'>
 		<textarea name = 'new-body' class = 'form-control' placeholder = 'Dear Diary,'></textarea>
+		<input type = 'file' name = 'new-file' class = 'form-control' multiple>
 		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>
 	</form>
 {% endblock content %}
@@ -33,7 +34,6 @@
 
 	<script type="text/javascript">
 		$(document).ready(function(){			
-
 			$('#edit-entry-form textarea').focus(function(){
 				$(this).autosize();
 			})

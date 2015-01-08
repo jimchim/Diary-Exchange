@@ -6,6 +6,10 @@
 		#entries a {
 			color: #F37074;			
 		}
+
+		img {
+			width: 100%;
+		}
 	</style>
 
 {% endblock css %}
@@ -15,6 +19,9 @@
 	{% for entry in entries %}
 		<h1><a href="{% url 'diary:entry_slug' entry.id entry.slug  %}">{{ entry.subject }}</a></h1>
 		<p>{{ entry.body|linebreaks|truncatechars:300 }}</p>		
+		{% if not entry.entryphoto_set.first == None %}
+			<img src="{{ entry.entryphoto_set.first.image_file.url }}">
+		{% endif %}
 	{% endfor %}
 	</span>
 	{# {{ message|safe }} #}

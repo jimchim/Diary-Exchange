@@ -1,0 +1,56 @@
+from PIL import Image
+import os
+
+jpg = '1.jpg'
+png = 'back.png'
+bmp = 'barbara.bmp'
+gif = '4.gif'
+gif2 = '5.gif'
+badImage = 'test.jpg'
+
+images = [jpg,png,bmp,gif,badImage]
+
+# for pic in a:
+# 	print pic.format
+
+
+def validateImage(image):
+	acceptedPILFormat = ['JPEG','PNG','BMP','GIF']
+	try:
+		img = Image.open(image)
+	except IOError:
+		#print image, "is a bad Image"
+		return False,image
+	else:
+		if img.format in acceptedPILFormat:
+			#print image, 'is a good image'
+			return True,img
+	
+
+
+
+for image in images:	
+	result = validateImage(image)
+	legit = result[0]
+	photo = result[1]
+	if legit == True:		
+		if photo.size[0] > 1024 or photo.size[1] > 1024 :
+			size = (1024,1024)		
+			photo.thumbnail(size, Image.ANTIALIAS)
+			name =  os.path.abspath(image)
+			photo.save(name)
+			#photo.show()			
+		# photo.show()
+		#print photo.filename, 'is a good image'
+	else:
+		print photo, 'is a bad image'
+
+
+# def checkExtension(image):
+
+# 	ext = image.format
+
+q = (400,266)
+w = (1024,1024)
+
+print w > q[0] or w > q[1]

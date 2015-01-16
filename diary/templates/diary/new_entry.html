@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
-
+{% load staticfiles %}
 {% block css %}
+	{% comment %} 
+	<link rel="stylesheet" type="text/css" href='{% static "library/medium-editor/css/medium-editor.min.css" %}'>	
+	<link rel="stylesheet" type="text/css" href='{% static "library/medium-editor/css/themes/default.css" %}'>	
+	<link rel="stylesheet" type="text/css" href='{% static "library/froala/css/froala_editor.min.css" %}'>
+	<link rel="stylesheet" type="text/css" href='{% static "library/froala/css/font-awesome.min.css" %}'>
+	<link rel="stylesheet" type="text/css" href='{% static "library/froala/css/froala_style.min.css" %}'>
+	{% endcomment %}
+	<link rel="stylesheet" type="text/css" href='//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css'>
+	<link rel="stylesheet" type="text/css" href='{% static "library/summernote/summernote.css" %}'>
 	
 	<style type="text/css">
 
@@ -13,30 +22,203 @@
 			min-height: 30em;
 		}
 
+		#image-previews img{
+			width: 100%;
+			margin-top: 1em;		
+		}		
+
+		input[name='new-subject'] {
+			margin-bottom: 1em;
+		}
+
+		.note-editable {
+			background-color: white;
+		}
+
+		.note-resizebar {
+			display:none;
+		}
+		
+
 	</style>
+	
 
 {% endblock css %}
 
 {% block content %}
-	<form action = '{% url "diary:new_entry" %}' method = 'post' enctype="multipart/form-data">
+	<form action = '{% url "diary:new_entry" %}' method = 'post' enctype="multipart/form-data" id = 'edit-entry-form'>
 		{% csrf_token %}
-		<input type = 'text' name = 'new-subject' placeholder = 'Title' class = 'form-control' autocomplete = 'off'>
-		<textarea name = 'new-body' class = 'form-control' placeholder = 'Dear Diary,'></textarea>
-		<input type = 'file' name = 'new-file' class = 'form-control' multiple>
+		<input type = 'text' name = 'new-subject' placeholder = 'Title' class = 'form-control' autocomplete = 'off' value = "{{ subject }}">
+		{# <div class = 'editor'></div> #}
+		<div id = 'summernote'></div>
+		<textarea name = 'new-body' class = 'form-control editor' placeholder = 'Dear Diary,'>{{ body }}</textarea>
+		<input type = 'file' name = 'new-file' class = 'form-control' multiple id = 'multi'>
+		<input type = 'hidden' name = 'invalid-images'>
 		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>
 	</form>
+	<div id = 'test' class = 'btn btn-lg btn-block btn-info'>Press me!</div>
+	<div id = 'image-previews'></div>	
 {% endblock content %}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 {% block script %}
-	{% load staticfiles %}
+	
 
 	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
+	{# <script type="text/javascript" src = '{% static "library/medium-editor/js/medium-editor.min.js" %}'></script> #}
+	{#<script type="text/javascript" src = '{% static "library/froala/js/froala_editor.min.js" %}'></script>	#}
+	<script type="text/javascript" src = '{% static "library/summernote/summernote.min.js" %}'></script>	
+	
 
 	<script type="text/javascript">
-		$(document).ready(function(){			
-			$('#edit-entry-form textarea').focus(function(){
-				$(this).autosize();
+		/*var editor = new MediumEditor('.editor')*/
+
+		$(document).ready(function(){		
+			/*$('textarea[name="new-body"]').hide();*/
+			$('#test').click(function(){
+				var content = $('#summernote').code()
+				$('textarea[name="new-body"]').val(content)
 			})
+			var summernote = $('#summernote').summernote({
+				height:400,
+				focus: true,
+				toolbar: [
+					//['style', ['style']], // no style button
+					['style', ['bold', 'italic', 'underline', 'clear']],
+					['fontsize', ['fontsize']],
+					['color', ['color']],
+					['para', ['ul', 'ol', 'paragraph']],
+					//['height', ['height']],
+					['insert', ['picture', 'link']], // no insert buttons
+					//['table', ['table']], // no table button
+					['help', ['help']] //no help button
+				],
+				onkeydown: function(){
+					var content = $('#summernote').code()
+					$('textarea[name="new-body"]').val(content)		
+				}
+				/*onImageUpload: function(files, editor, welEditable){
+					console.log('image upload:', files);
+					console.log('editor', editor)					
+				}*/
+			});
+
+
+			
+			
+			/*$('#edit-entry-form textarea').focus(function(){
+				$(this).autosize();
+			})*/
+
+			$('input[type="submit"]').click(function(e){
+				var sub = $('input[name = "new-subject"]').val()
+				var bod = $('textarea[name = "new-body"]').val()								
+				if (sub.length * bod.length == 0) {
+					e.preventDefault()					
+				}
+			})
+
+			var fileList = []
+
+			function verifyImage(image) {
+				var reader = new FileReader()
+				var img = new Image() // Image object used to test the uploaded image file
+
+				reader.readAsDataURL(image)
+
+
+
+				reader.onloadend = function(){
+					img.src = reader.result
+					img.onload = function(_image){
+						var preview = document.getElementById('image-previews')						
+						$(preview).append('<img src = "' + reader.result + '">')												
+						/*console.log(img.src)
+						console.log(image)						*/
+					}
+					img.onerror = function(){
+						console.log(image.name + ' is invalid')
+						fileList.push(image.name)
+						$('input[name="invalid-images"]').val(fileList)
+					}					
+				} 
+
+				//console.log(image + ' is valid.')
+			} 
+
+			$('#multi').change(function(){
+
+				// prevent user trying to submit multiple images 
+				$('input[name="invalid-images"]').val(null) 
+				fileList = []
+
+
+				if (this.files.length < 1) {
+					console.log('Empty file input at #multi')
+					return
+				}
+				
+				//else
+
+				var files = this.files
+				var invalidFiles = []
+				var allowedFormat = ['jpg', 'jpeg', 'gif','png','bmp']
+				
+
+
+				for (var i = 0; i < files.length ; i++) {										
+					var file = this.files[i]
+					var name = file.name
+					var extension = file.name.split('.').pop().toLowerCase() // ensure match with lowercased allowedFormat
+					var sizeInMB = file.size/1024/1024
+					
+
+					if (sizeInMB > 50) { 
+						invalidFiles.push(file) 
+						console.log(name + ' is too big, please upload images under 50 MBs.')
+					}
+
+					if ( allowedFormat.indexOf(extension) == -1 ) {  // not in allowed formats
+						invalidFiles.push(file) 
+						console.log(name + ' is not in a supported file format, please upload JPG / GIF / PNG or BMP images only.')
+					}
+
+					try {
+						verifyImage(file)
+					}
+
+					catch (error) {
+						console.log('foo.jpg?')
+					}
+					/*if () {
+					}			*/
+						/*invalidFiles.push(file)
+						console.log(verified)			*/
+					
+				} // end for				
+				return 
+			})
+
 		})		
 	</script>	
 

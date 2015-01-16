@@ -1,11 +1,34 @@
 /*var editor = new MediumEditor('.editor')*/
-/*$('textarea[name="new-body"]').hide();*/
 $(document).ready(function(){			
+
+	var fileData = 'hello world'
+
+	$('textarea[name="new-body"]').hide();
+
+	var sendPhoto = function(photo){
+		var formData = new FormData(photo)
+		var postPhoto = $.ajax({
+			url: "/ajax/post_photo/",
+			type: "post",
+			data: formData,
+		})
+
+		postPhoto.done(function (result){
+			console.log(result)
+		})
+
+		postPhoto.fail(function(result){
+			alert("failed")
+		})
+		
+	}
 
 
 	$('#test').click(function(){
-		var content = $('#summernote').code()
-		$('textarea[name="new-body"]').val(content)
+		alert(fileData)
+		sendPhoto(fileData)
+		/*var content = $('#summernote').code()
+		$('textarea[name="new-body"]').val(content)*/
 	})
 
 	var summernote = $('#summernote').summernote({
@@ -30,7 +53,9 @@ $(document).ready(function(){
 			console.log('image upload:', files[0])
 			console.log('editor', editor)					
 			verifyImage(files[0],function(e){
-				editor.insertImage(welEditable,e)				
+				editor.insertImage(welEditable,e)	
+				fileData = files[0]
+				//alert(typeof files[0])						
 			})
 		}
 	});
@@ -61,7 +86,8 @@ $(document).ready(function(){
 			img.src = reader.result
 			img.onload = function(_image){
 				var preview = document.getElementById('image-previews')						
-				$(preview).append('<img src = "' + reader.result + '">')				
+				$(preview).append('<img src = "' + reader.result + '">')	
+				//fileData = img							
 				callback(img.src)
 				/*console.log(img.src)
 				console.log(image)						*/

@@ -11,6 +11,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
 
 from diary.models import Entry, EntryPhoto
 from diary.forms.diary_forms import registerForm
@@ -256,3 +257,15 @@ def check_username(request):
 		return HttpResponseBadRequest(response)
 		#raise Http404
 		#return redirect('diary:index')
+
+@csrf_exempt
+def post_photo(request):
+	if request.method == 'POST' and request.is_ajax():
+		return HttpResponse(request.POST)
+
+	elif request.method == "GET" and request.is_ajax():
+		return HttpResponse("It's an Ajax GET request!")
+
+	elif request.method == "GET" and not request.is_ajax():
+		return HttpResponse("Stupid User trying to access ajax only page")
+

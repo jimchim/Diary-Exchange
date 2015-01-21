@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
 from django.test import TestCase
 from diary.forms.diary_forms import registerForm
 from diary.models import Entry, EntryPhoto
@@ -54,7 +57,7 @@ class EntryPhotoTest(TestCase):
 
 	def test_entryphoto_processing_with_legit_jpg(self):
 		""" standard JPG image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/1.jpg', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/1.jpg', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -70,7 +73,7 @@ class EntryPhotoTest(TestCase):
 
 	def test_entryphoto_processing_with_invalid_jpg(self):
 		""" Text file with jpg extension, false image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/test.jpg', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/test.jpg', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -86,9 +89,9 @@ class EntryPhotoTest(TestCase):
 
 	def test_entryphoto_processing_with_animated_gif(self):	
 		""" Animated GIF image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/2x.gif', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/2x.gif', 'rb')
 		data = f.read()
-		image = Image.open('/home/jim/diaryexchange/diary-exchange/diary/test/4.gif')
+		image = Image.open('/home/jim/diaryexchange/diary/test/4.gif')
 
 		self.assertEqual((image.format, image.mode), ("GIF", "P"))
 
@@ -122,7 +125,7 @@ class EntryPhotoTest(TestCase):
 	
 	def test_entryphoto_processing_with_still_gif(self):
 		""" standard GIF image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/4.gif', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/4.gif', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -137,7 +140,7 @@ class EntryPhotoTest(TestCase):
 		
 	def test_entryphoto_processing_with_legit_png(self):
 		""" standard RGB PNG image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/back.png', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/back.png', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -153,7 +156,7 @@ class EntryPhotoTest(TestCase):
 
 	def test_entryphoto_processing_with_RGBA_png(self):
 		""" PNG with Transparency Settings """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/12.png', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/12.png', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -169,7 +172,7 @@ class EntryPhotoTest(TestCase):
 
 	def test_entryphoto_processing_with_legit_bmp(self):
 		""" standard BMP image """
-		f = open('/home/jim/diaryexchange/diary-exchange/diary/test/barbara.bmp', 'rb')
+		f = open('/home/jim/diaryexchange/diary/test/barbara.bmp', 'rb')
 		data = f.read()
 		newFile = SimpleUploadedFile('1.jpg', data)
 		
@@ -181,3 +184,28 @@ class EntryPhotoTest(TestCase):
 		img = EntryPhoto.objects.first()
 		
 		self.assertEqual(result[0], True) #upload success
+
+class EntryTest(TestCase):
+	def create_test_user(self):
+		""" helper method """
+		u = User.objects.create_superuser(username = 'Chris', email = 'a@example.com', password = '12345678')
+		user = User.objects.first()
+		return user	
+
+	def test_create_entry_without_specifying_slug(self):
+		""" test overriden save method is working and calling make_sulg method automatically."""
+		user = self.create_test_user()
+		entry = Entry.objects.create(author = user, subject = "lkajsfhd", body = "laksjdhf" )		
+		self.assertEqual(entry.slug, "lkajsfhd")
+
+	def test_create_entry_without_slug_and_subject(self):
+		""" test if entry gets untitled as subject if not specified"""
+		user = self.create_test_user()
+		entry = Entry.objects.create(author = user, body = "laksjdhf" )				
+		self.assertEqual(entry.slug, "untitled")
+
+	def test_create_entry_without_giving_subject(self):
+		""" test if entry gets untitled as subject if not specified"""
+		user = self.create_test_user()
+		entry = Entry.objects.create(author = user, body = "laksjdhf" )				
+		self.assertEqual(entry.subject, "Untitled")

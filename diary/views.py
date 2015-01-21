@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 
-from diary.models import Entry, EntryPhoto
+from diary.models import Entry, EntryPhoto, UserUploadedPhoto
 from diary.forms.diary_forms import registerForm
 from PIL import Image
 # Create your views here.
@@ -67,67 +67,62 @@ def logout(request):
 
 @login_required
 def index(request):		
-	entries = Entry.objects.all().order_by('-published')			
+	entries = Entry.objects.filter(is_draft = False).order_by('-published')			
 	return render(request, 'diary/index.html', {'entries': entries})
 
 
 @login_required
 def new_entry(request):
-	if request.method == "POST":		
-		sub = request.POST['new-subject']
-		bod = request.POST['new-body']
-		user = request.user
+	if request.method == "GET":		
+		request.session['current_entry'] = None
+		return render(request, 'diary/new_entry.html')
+	elif request.method == "POST":				
+		entry = None
+		if request.session['current_entry'] != None: #Entry was created by Ajax call to save the draft
+			entry = Entry.objects.get(pk = request.session['current_entry'])
+		else:
+			entry = Entry()		
+		entry.subject = request.POST.get('subject', "")
+		entry.body = request.POST.get('body', "")
+		entry.author = request.user
+		entry.is_draft = False #need to set this to make it publicly available
+		entry.save()
 
-		if len(sub) * len(bod) == 0: #10000 * 0 = 0 
-			messages.info(request, 'Please enter post title and body before submitting.')
-			return render(request, 'diary/new_entry.html', {'subject': sub, 'body': bod})
-
-		else: #text content ok, saving entry.
-			newEntry = Entry(subject = sub, body = bod, author = user)
-			newEntry.make_slug()
-			newEntry.published = newEntry.edited = timezone.now()
-			newEntry.save()
-		
-		if request.FILES: #file exists, handle 	
-
-			uploaded_files = request.FILES.getlist('new-file')
-			invalids = request.POST['invalid-images'].split(',')
-			cleaned_files = false_files = []		
-
-
-			if invalids == [u'']: #pass all files to check with PIL if no js error reported				
-				cleaned_files = uploaded_files				
-			else: 
-				result = newEntry.filter_javascript_invalid(uploaded_files, invalids)
-				cleaned_files = result
-				false_files += [image for image in uploaded_files if image not in cleaned_files]				
-			
-			failed = len(false_files)
-
-			for image in cleaned_files:
-				result = newEntry.process_entryphoto(image)
-				if result[0] != True:
-					failed += 1
-					false_files.append(image)					
-				else:					
-					EntryPhoto.objects.create(article = newEntry, image_file = result[1])
-
-			if failed > 0: #print bad news to user.
-				if failed == 1:
-					msg = "A file cannot be uploaded, please try again with a valid JPG/GIF/PNG or BMP formatted image, (Max Size: 50MB)."
-				else: 
-					msg = "%s files cannot be uploaded, please try again with valid JPG/GIF/PNG or BMP formatted images, (Max Size: 50MB)." % failed
-				messages.info(request, msg)
-				messages.info(request, "Files not uploaded")
-				for item in false_files:					
-					messages.info(request, "%s | %.2f kb" %(item, item.size/1024.0))
-				return redirect('diary:entry_edit_slug', entry_id = int(newEntry.id), slug = str(newEntry.slug))			
-
-		return redirect('diary:entry_slug', entry_id = int(newEntry.id), slug = str(newEntry.slug) )
+		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug))		
 
 	else:
-		return render(request, 'diary/new_entry.html')
+		raise Http404
+		
+		
+@login_required
+def save_entry(request):
+	""" This view process entry saving POSTed by Ajax
+		The Ajax call is triggered when the user changed the content of a post,
+		then idled for 3 seconds.
 
+		Note: Only JavaScript checking is implemented, need to set timeout on
+		server side as well in the future to lower the threat of DDoS attack.
+	"""
+	if request.method == "POST" and request.is_ajax():	
+		entry = None
+		subject = request.POST.get('subject', "")
+		body = request.POST.get('body', "")
+
+		if request.session['current_entry'] == None: #new entry
+			entry = Entry.objects.create(subject = subject, body = body, author = request.user)
+			request.session['current_entry'] = entry.id
+			return HttpResponse(entry.id)	 
+
+		else: #update entry		
+			entry = Entry.objects.get(pk = request.session['current_entry'])			
+			if entry.subject != subject:
+				entry.subject = subject				
+			if entry.body != body:
+				entry.body = body				
+			entry.save()			
+			return HttpResponse("entry updated")	 					
+	else:
+		raise Http404		
 
 @login_required
 def entry(request, entry_id, **slug):
@@ -258,14 +253,33 @@ def check_username(request):
 		#raise Http404
 		#return redirect('diary:index')
 
-@csrf_exempt
-def post_photo(request):
+@login_required
+def add_entry_photo(request):	
 	if request.method == 'POST' and request.is_ajax():
-		return HttpResponse(request.POST)
 
-	elif request.method == "GET" and request.is_ajax():
-		return HttpResponse("It's an Ajax GET request!")
+		entry = None
+		if request.session['current_entry'] == None:
+			entry = Entry.objects.create(subject = request.POST.get('subject', ""), body = request.POST.get('body',""), author = request.user)
+		else:
+			entry = Entry.objects.get(pk = request.session['current_entry'])
 
-	elif request.method == "GET" and not request.is_ajax():
-		return HttpResponse("Stupid User trying to access ajax only page")
+		if request.FILES and len(request.FILES) == 1:			
+			result = entry.process_entryphoto(request.FILES['photo'])
+			if result[0] == True: #safe to save as photo
+				photo = EntryPhoto.objects.create(article = entry, image_file = result[1])
+				return HttpResponse(photo.image_file.url)				
+			else:					
+				return HttpResponse("Failed")				
+		else:
+			return HttpResponseBadRequest('Cannot process more than 1 photo at a time.')			
+	else:
+		raise Http404
 
+def test(request):
+	return HttpResponse("You're at test page")
+
+
+@login_required
+def profile(request):
+	entries = request.user.entry_set.all().order_by('-published')
+	return render(request, 'diary/profile.html', {'entries': entries})

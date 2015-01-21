@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% load diary_filters %}
+
+{% block content %}
+	{% if form %}
+		{{ form.subject.label_tag }}
+		{{ form.subject|attr:"class:form-control" }}
+		{{ form.subject.label_tag }}
+		{{ form.subject|attr:"class:form-control" }}
+	{% endif %}
+{% endblock content %}

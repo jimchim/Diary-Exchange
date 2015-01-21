@@ -19,28 +19,33 @@ class Entry(models.Model):
 	"""docstring for ClassName"""
 	subject = models.CharField(max_length = 180)
 	body = models.TextField()
-	slug = models.SlugField()
 	author = models.ForeignKey(User)
+	slug = models.SlugField(max_length = 180)
 	
-	published = models.DateTimeField('Time Published', default= timezone.now())
-	edited = models.DateTimeField('Time Edited', default=timezone.now())
+	published = models.DateTimeField('Time Published', default= timezone.now)
+	edited = models.DateTimeField('Time Edited', default=timezone.now)
 	is_draft = models.BooleanField(default=True)
-	is_public = models.BooleanField(default=False)
+
+	
 
 	def __unicode__(self):
 		return self.subject
 
 
 	def make_slug(self):
-		""" create slug using self.subject """
-		sub = self.subject
-
-		#if type(sub) == 'unicde':
+		""" create slug using self.subject """		
+		sub = self.subject		
+		if len(self.subject) == 0:
+			self.subject = sub = "Untitled"
 		sub = unidecode(sub)
 		sub = slugify(sub)		
 		self.slug = slugify(sub)
 
-		return sub
+	def save(self,*args, **kwargs):				
+		self.make_slug()		
+		super(Entry, self).save(*args, **kwargs)	
+
+		
 
 	def update_last_edited_time(self):
 		""" update edited field 
@@ -179,3 +184,10 @@ def uuid_filename(instance, filename):
 class EntryPhoto(models.Model):
 	article = models.ForeignKey(Entry)	
 	image_file = models.ImageField(upload_to = uuid_filename)
+
+class UserUploadedPhoto(models.Model):
+	uploader = models.ForeignKey(User)
+	image_file = models.ImageField(upload_to = uuid_filename)
+
+	def __unicode__(self):
+		return unicode(self.image_file.url)

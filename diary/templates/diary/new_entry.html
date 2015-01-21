@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load staticfiles %}
+{% load widget_tweaks %}
 {% block css %}
 	{% comment %} 
 	<link rel="stylesheet" type="text/css" href='{% static "library/medium-editor/css/medium-editor.min.css" %}'>	
@@ -23,11 +24,11 @@
 		}
 
 		#image-previews img{
-			width: 100%;
+			width: 20%;
 			margin-top: 1em;		
 		}		
 
-		input[name='new-subject'] {
+		input[name='subject'] {
 			margin-bottom: 1em;
 		}
 
@@ -41,56 +42,26 @@
 		
 
 	</style>
-	
-
 {% endblock css %}
 
-{% block content %}
-	<form action = '{% url "diary:new_entry" %}' method = 'post' enctype="multipart/form-data" id = 'edit-entry-form'>
-		{% csrf_token %}
-		<input type = 'text' name = 'new-subject' placeholder = 'Title' class = 'form-control' autocomplete = 'off' value = "{{ subject }}">
-		{# <div class = 'editor'></div> #}
-		<div id = 'summernote'></div>
-		<textarea name = 'new-body' class = 'form-control editor' placeholder = 'Dear Diary,'>{{ body }}</textarea>
-		<input type = 'file' name = 'new-file' class = 'form-control' multiple id = 'multi'>
-		<input type = 'hidden' name = 'invalid-images'>
-		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>
-	</form>
-	<div id = 'test' class = 'btn btn-lg btn-block btn-info'>Press me!</div>
+{% block content %}	
+
 	<div id = 'image-previews'></div>	
+	<form action = '{% url "diary:new_entry" %}' method = 'post' enctype="multipart/form-data" id = 'edit-entry-form'>		
+		{% csrf_token %}
+		<input type = 'text' name = 'subject' class = 'form-control' placeholder = "Title" autocomplete = 'off' maxlength = "180" value = "{{ subject }}">		
+		<div id = 'summernote'></div>
+		<textarea name = 'body' class = 'form-control' placeholder = 'Dear Diary,'>{{ body }}</textarea>		
+		{# <input type = 'file' name = 'new-file' class = 'form-control' multiple id = 'image-uploader'> #}
+		{# <input type = 'hidden' name = 'invalid-images'> #}
+		<input type = 'submit' value = 'Post' class = 'btn btn-block btn-lg btn-warning'>	
+	</form>
 {% endblock content %}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 {% block script %}
-	
-	{% comment %}
 		
 	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
-	{# <script type="text/javascript" src = '{% static "library/medium-editor/js/medium-editor.min.js" %}'></script> #}
-	{#<script type="text/javascript" src = '{% static "library/froala/js/froala_editor.min.js" %}'></script>	#}
-	{% endcomment %}
 	<script type="text/javascript" src = '{% static "library/summernote/summernote.min.js" %}'></script>	
 	<script type="text/javascript" src = '{% static "js/new-entry.js" %}'  ></script>	
-	
 
 {% endblock script %}

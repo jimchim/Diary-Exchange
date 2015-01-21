@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
+from diary.models import Entry
 
 class registerForm(forms.Form):	
 	# TODO: Define form fields here
@@ -35,3 +36,16 @@ class registerForm(forms.Form):
 		if confirm_password != password:
 			raise forms.ValidationError('Confirm password not matched')
 		return confirm_password
+
+class entryForm(forms.Form):
+	subject = forms.CharField(max_length = 180)
+	body = forms.CharField(widget = forms.Textarea)
+	# class Meta:
+	# 	model = Entry
+	# 	fields = ['subject', 'body', 'author']	
+
+	# def clean_subject(self): #this works
+	# 	subject = self.cleaned_data['subject']
+	# 	if  subject != "hello world":
+	# 		raise forms.ValidationError('You need to say hello to the world in your subject')
+	# 	return subject	  

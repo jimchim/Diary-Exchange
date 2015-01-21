@@ -1,64 +1,93 @@
 /*var editor = new MediumEditor('.editor')*/
-$(document).ready(function(){			
+$(document).ready(function(){				
+	entryCreated = false
 
-	var fileData = 'hello world'
+	$('textarea[name="body"]').hide();	
 
-	$('textarea[name="new-body"]').hide();
-
-	var sendPhoto = function(photo){
-		var formData = new FormData(photo)
-		var postPhoto = $.ajax({
-			url: "/ajax/post_photo/",
-			type: "post",
+	var saveEntry = function(){
+		var formData = new FormData()
+		formData.append('csrfmiddlewaretoken', getCSRF())		
+		if ($('input[name="subject"]').val().length > 0){
+			formData.append('subject', $('input[name="subject"]').val())
+		}
+		if ($('textarea[name="body"]').val().length > 0){
+			formData.append('body', $('textarea[name="body"]').val())
+		}
+		var postEntry = $.ajax({
+			url: "/ajax/save_entry/",
+			type: 'post',
 			data: formData,
+			contentType: false,
+			processData: false,
+			cache: false,
 		})
 
-		postPhoto.done(function (result){
-			console.log(result)
+		postEntry.done(function(data){
+			entryCreated = true
+			console.log(data)
+			//console.log('Success: Posted Entry Data to Server')
+		})
+
+		postEntry.fail(function(data){
+			console.log('Failed: Post Entry Data to Server')
+		})
+	}
+
+	var timedFunction;
+	var timer = 3000;
+
+	var resetTimer = function(){
+		clearTimeout(timedFunction)
+		timedFunction = setTimeout(saveEntry, timer)		
+	}
+
+	$('input[name="subject"], textarea[name="body"]').on('change, keydown, keyup, keypress input', function(){
+		resetTimer()
+	})
+
+	var alertData = function(){		
+		subjectData = $('input[name="subject"]').val()
+		bodyData = $('textarea[name="body"]').val()
+		/*console.log("subject: " + subjectData)
+		console.log("body: " + bodyData)*/
+	}
+	
+
+	var sendPhoto = function(photo, callback){
+		var formData = new FormData(photo)
+		formData.append('csrfmiddlewaretoken', getCSRF())
+		formData.append('photo', photo)
+		if (!entryCreated) { // entryphoto needs an entry as FK to save.
+			if ($('input[name="subject"]').val().length > 0){
+				formData.append('subject', $('input[name="subject"]').val())
+			}
+			if ($('textarea[name="body"]').val().length > 0){
+				formData.append('body', $('textarea[name="body"]').val())
+			}			
+		}
+		var postPhoto = $.ajax({
+			url: "/ajax/add_entry_photo/",
+			type: "post",
+			data: formData,
+			contentType: false,
+			processData: false,
+			cache: false,
+		})
+
+		postPhoto.done(function (result){			
+			callback(result)
 		})
 
 		postPhoto.fail(function(result){
-			alert("failed")
+			console.log("failed")
 		})
 		
 	}
+	
 
-
-	$('#test').click(function(){
-		alert(fileData)
-		sendPhoto(fileData)
-		/*var content = $('#summernote').code()
-		$('textarea[name="new-body"]').val(content)*/
+	$('#test').click(function(){		
+		console.log('test button clicked')		
 	})
-
-	var summernote = $('#summernote').summernote({
-		height:400,
-		focus: true,
-		toolbar: [
-			//['style', ['style']], // no style button
-			['style', ['bold', 'italic', 'underline', 'clear']],
-			['fontsize', ['fontsize']],
-			['color', ['color']],
-			['para', ['ul', 'ol', 'paragraph']],
-			//['height', ['height']],
-			['insert', ['picture', 'link']], // no insert buttons
-			//['table', ['table']], // no table button
-			['help', ['help']] //no help button
-		],
-		onkeydown: function(){
-			var content = $('#summernote').code()
-			$('textarea[name="new-body"]').val(content)		
-		},
-		onImageUpload: function(files, editor, welEditable){
-			console.log('image upload:', files[0])
-			console.log('editor', editor)					
-			verifyImage(files[0],function(e){
-				editor.insertImage(welEditable,e)	
-				fileData = files[0]
-				//alert(typeof files[0])						
-			})
-		}
-	});
 	
 	$('#edit-entry-form textarea').focus(function(){
 		$(this).autosize();
@@ -70,89 +99,40 @@ $(document).ready(function(){
 		if (sub.length * bod.length == 0) {
 			e.preventDefault()					
 		}
-	})
+	})			
 
-	
+	var summernote = $('#summernote').summernote({
+		height:400,
+		focus: true,
+		toolbar: [
+			['style', ['bold', 'italic', 'underline', 'clear']],
+			['fontsize', ['fontsize']],
+			['color', ['color']],
+			['para', ['ul', 'ol', 'paragraph']],
+			['insert', ['picture', 'link']], // no insert buttons
+			['help', ['help']] //no help button
+			//['style', ['style']], // no style button
+			//['height', ['height']],
+			//['table', ['table']], // no table button
+		],
 
-	var fileList = []
+		onChange: function(){
+			var content = $('#summernote').code()
+			$('textarea[name="body"]').val(content)
+			resetTimer()
+		},
 
-	function verifyImage(image, callback) {
-		var reader = new FileReader()
-		var img = new Image() // Image object used to test the uploaded image file
-
-		reader.readAsDataURL(image)
-
-		reader.onloadend = function(){
-			img.src = reader.result
-			img.onload = function(_image){
-				var preview = document.getElementById('image-previews')						
-				$(preview).append('<img src = "' + reader.result + '">')	
-				//fileData = img							
-				callback(img.src)
-				/*console.log(img.src)
-				console.log(image)						*/
+		onImageUpload: function(files, editor, welEditable){
+			if (!isAcceptedImageFile(files[0])) {
+				showToastWarning('Image not accepted, please upload JPG/GIF/PNG/BMP images that are under 30MB.')				
+				return
 			}
-			img.onerror = function(){
-				console.log(image.name + ' is invalid')
-				fileList.push(image.name)
-				$('input[name="invalid-images"]').val(fileList)
-			}					
-		} 
-
-		//console.log(image + ' is valid.')
-	} 
-
-	$('#multi').change(function(){
-
-		// prevent user trying to submit multiple images 
-		$('input[name="invalid-images"]').val(null) 
-		fileList = []
-
-
-		if (this.files.length < 1) {
-			console.log('Empty file input at #multi')
-			return
+			validateImage(files[0],function(imageFile, imageObject){
+				sendPhoto(imageFile, function(result){
+					editor.insertImage(welEditable,result)					
+					resetTimer()					
+				})
+			})
 		}
-		
-		//else
-
-		var files = this.files
-		var invalidFiles = []
-		var allowedFormat = ['jpg', 'jpeg', 'gif','png','bmp']
-		
-
-
-		for (var i = 0; i < files.length ; i++) {										
-			var file = this.files[i]
-			var name = file.name
-			var extension = file.name.split('.').pop().toLowerCase() // ensure match with lowercased allowedFormat
-			var sizeInMB = file.size/1024/1024
-			
-
-			if (sizeInMB > 50) { 
-				invalidFiles.push(file) 
-				console.log(name + ' is too big, please upload images under 50 MBs.')
-			}
-
-			if ( allowedFormat.indexOf(extension) == -1 ) {  // not in allowed formats
-				invalidFiles.push(file) 
-				console.log(name + ' is not in a supported file format, please upload JPG / GIF / PNG or BMP images only.')
-			}
-
-			try {
-				verifyImage(file)
-			}
-
-			catch (error) {
-				console.log('foo.jpg?')
-			}
-			/*if () {
-			}			*/
-				/*invalidFiles.push(file)
-				console.log(verified)			*/
-			
-		} // end for				
-		return 
-	})
-
+	});
 })		

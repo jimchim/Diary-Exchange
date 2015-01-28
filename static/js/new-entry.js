@@ -1,138 +1,77 @@
 /*var editor = new MediumEditor('.editor')*/
 $(document).ready(function(){				
-	entryCreated = false
-
-	$('textarea[name="body"]').hide();	
-
-	var saveEntry = function(){
-		var formData = new FormData()
-		formData.append('csrfmiddlewaretoken', getCSRF())		
-		if ($('input[name="subject"]').val().length > 0){
-			formData.append('subject', $('input[name="subject"]').val())
-		}
-		if ($('textarea[name="body"]').val().length > 0){
-			formData.append('body', $('textarea[name="body"]').val())
-		}
-		var postEntry = $.ajax({
-			url: "/ajax/save_entry/",
-			type: 'post',
-			data: formData,
-			contentType: false,
-			processData: false,
-			cache: false,
-		})
-
-		postEntry.done(function(data){
-			entryCreated = true
-			console.log(data)
-			//console.log('Success: Posted Entry Data to Server')
-		})
-
-		postEntry.fail(function(data){
-			console.log('Failed: Post Entry Data to Server')
-		})
-	}
-
-	var timedFunction;
-	var timer = 3000;
-
-	var resetTimer = function(){
-		clearTimeout(timedFunction)
-		timedFunction = setTimeout(saveEntry, timer)		
-	}
-
-	$('input[name="subject"], textarea[name="body"]').on('change, keydown, keyup, keypress input', function(){
-		resetTimer()
-	})
-
-	var alertData = function(){		
-		subjectData = $('input[name="subject"]').val()
-		bodyData = $('textarea[name="body"]').val()
-		/*console.log("subject: " + subjectData)
-		console.log("body: " + bodyData)*/
-	}
-	
-
-	var sendPhoto = function(photo, callback){
-		var formData = new FormData(photo)
-		formData.append('csrfmiddlewaretoken', getCSRF())
-		formData.append('photo', photo)
-		if (!entryCreated) { // entryphoto needs an entry as FK to save.
-			if ($('input[name="subject"]').val().length > 0){
-				formData.append('subject', $('input[name="subject"]').val())
-			}
-			if ($('textarea[name="body"]').val().length > 0){
-				formData.append('body', $('textarea[name="body"]').val())
-			}			
-		}
-		var postPhoto = $.ajax({
-			url: "/ajax/add_entry_photo/",
-			type: "post",
-			data: formData,
-			contentType: false,
-			processData: false,
-			cache: false,
-		})
-
-		postPhoto.done(function (result){			
-			callback(result)
-		})
-
-		postPhoto.fail(function(result){
-			console.log("failed")
-		})
-		
-	}
-	
-
-	$('#test').click(function(){		
-		console.log('test button clicked')		
-	})
-	
-	$('#edit-entry-form textarea').focus(function(){
-		$(this).autosize();
-	})
 
 	$('input[type="submit"]').click(function(e){
-		var sub = $('input[name = "new-subject"]').val()
-		var bod = $('textarea[name = "new-body"]').val()								
-		if (sub.length * bod.length == 0) {
-			e.preventDefault()					
+		e.preventDefault()					
+		if ($('#final-date').val() == ""){
+			fillPublishTimestamp()
 		}
-	})			
-
-	var summernote = $('#summernote').summernote({
-		height:400,
-		focus: true,
-		toolbar: [
-			['style', ['bold', 'italic', 'underline', 'clear']],
-			['fontsize', ['fontsize']],
-			['color', ['color']],
-			['para', ['ul', 'ol', 'paragraph']],
-			['insert', ['picture', 'link']], // no insert buttons
-			['help', ['help']] //no help button
-			//['style', ['style']], // no style button
-			//['height', ['height']],
-			//['table', ['table']], // no table button
-		],
-
-		onChange: function(){
-			var content = $('#summernote').code()
-			$('textarea[name="body"]').val(content)
-			resetTimer()
-		},
-
-		onImageUpload: function(files, editor, welEditable){
-			if (!isAcceptedImageFile(files[0])) {
-				showToastWarning('Image not accepted, please upload JPG/GIF/PNG/BMP images that are under 30MB.')				
+		var sub = $('input[name = "subject"]').val()
+		var bod = $('textarea[name = "body"]').val()								
+		if (sub.length == 0 && bod.length == 0) {
+			var submitEmptyEntry = confirm("You're about to publish an empty entry, is it ok?")
+			if (!submitEmptyEntry){
 				return
 			}
-			validateImage(files[0],function(imageFile, imageObject){
-				sendPhoto(imageFile, function(result){
-					editor.insertImage(welEditable,result)					
-					resetTimer()					
-				})
-			})
-		}
-	});
+		}		
+		$('#edit-entry-form').submit();
+	})			
+
+	// time picker related
+
+	$('#test').click(function(){
+		fillPublishTimestamp()
+	})
+
+	var pDate = rome(date, {
+			weekStart: 1,
+			time: false,	
+		})		
+
+	var pTime = rome(time, {			
+		date: false,	
+	})		
+	
+	var dateTimeToTimestamp = function(date, time){
+		// date format 2015-01-27
+		// time format 13:15:55
+		timestamp = date + " " + time
+		timestamp = moment(timestamp).unix()		
+		return timestamp
+	}
+	
+
+	var fillPublishTimestamp = function(){
+		var dateStamp = moment().format('YYYY-MM-DD')
+		var timeStamp = moment().format('HH:mm:ss')
+		
+
+		if (pTime.getDate() != null) {
+			timeStamp = $('#time').val()			
+		}		
+
+		if (pDate.getDate() != null) {
+			dateStamp = $('#date').val()			
+			if (pTime.getDate() == null) {
+				timeStamp = "00:00:00"
+			}
+		}		
+		readableTime = moment(dateStamp + " " + timeStamp).calendar()
+		$('#final-date').val(dateTimeToTimestamp(dateStamp, timeStamp))		
+		return readableTime
+		
+	}
+
+	$('#toggle-time-picker').click(function(){
+		$('#publish-time').text('')
+		$(this).hide()
+		$('#time-picker').slideDown()		
+	})
+
+	$('#set-time').click(function(){
+		$('#publish-time').text("Publish Date: " + fillPublishTimestamp());
+		$('#toggle-time-picker').text('Change Publish Date');		
+		$('#toggle-time-picker').show();		
+		$('#time-picker').hide();
+	})
 })		

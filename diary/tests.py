@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-from django.test import TestCase
+from django.test import TestCase, Client
 from diary.forms.diary_forms import registerForm
 from diary.models import Entry, EntryPhoto
 from django.contrib.auth.models import User
@@ -185,7 +185,7 @@ class EntryPhotoTest(TestCase):
 		
 		self.assertEqual(result[0], True) #upload success
 
-class EntryTest(TestCase):
+class CreateEntryTest(TestCase):
 	def create_test_user(self):
 		""" helper method """
 		u = User.objects.create_superuser(username = 'Chris', email = 'a@example.com', password = '12345678')
@@ -209,3 +209,130 @@ class EntryTest(TestCase):
 		user = self.create_test_user()
 		entry = Entry.objects.create(author = user, body = "laksjdhf" )				
 		self.assertEqual(entry.subject, "Untitled")
+
+class EntryViewTest(TestCase):
+	def setUp(self):
+		self.user = User.objects.create_superuser(username = 'spam', email = 'asfd@askljf.com', password = '12345678')
+		self.user2 = User.objects.create_superuser(username = 'jim', email = 'jim@askljf.com', password = '12345678')
+		self.user1_post = Entry.objects.create(subject = 'Entry 1', body = 'body', author = self.user, is_draft = False)
+		self.user2_post = Entry.objects.create(subject = 'Entry 2', body = 'body', author = self.user2, is_draft = True)
+		self.client = Client()
+		self.login_data = {
+			'login_username': 'spam',
+			'login_password': '12345678',
+		}
+
+	def test_login_page(self):
+		response = self.client.get('/login/')
+		self.assertEqual(response.status_code, 200) #200 OK		
+		self.assertTemplateUsed(response, 'base.html')
+		self.assertTemplateUsed(response, 'diary/login.html')
+
+	def test_logging_in(self):		
+		response = self.client.post('/login/', self.login_data, follow = True)				
+		self.assertTemplateUsed(response, 'diary/index.html')
+		self.assertTemplateUsed(response, 'base.html')
+		self.assertRedirects(response,'/')		
+		self.assertEqual(response.context['user'], self.user) #response.context['user'] == request.user	
+
+	def test_access_index_without_login(self):
+		response = self.client.get('/profile/', follow = True)		
+		self.assertTemplateUsed(response, 'diary/login.html')
+		self.assertTemplateNotUsed(response, 'diary/profile.html')
+		self.assertRedirects(response, '/login/?next=/profile/')
+
+	def test_entry_viewed_by_author(self):
+		self.client.login(username = 'spam', password = '12345678')		
+		user1_post_url = '/entry/%s' % self.user1_post.id
+		response = self.client.get(user1_post_url, follow = True)
+		self.assertEqual(response.context['user'], self.user1_post.author)
+		self.assertTemplateUsed(response, 'diary/entry.html')
+		
+	def test_entry_viewed_by_others(self):
+		self.client.login(username = 'jim', password = '12345678')		
+		user1_post_url = '/entry/%s' % self.user1_post.id
+		response = self.client.get(user1_post_url, follow = True)
+		self.assertNotEqual(response.context['user'], self.user1_post.author)
+		self.assertTemplateUsed(response, 'diary/entry.html')					
+
+	def test_entry_draft_cannot_be_seen_in_index(self):
+		self.client.login(username = 'spam', password = '12345678')
+		response = self.client.get('/')
+		self.assertContains(response, self.user1_post.subject)
+		self.assertNotContains(response, self.user2_post.subject)
+
+	def test_entry_draft_can_be_seen_in_profile_by_author(self):
+		self.client.login(username = 'jim', password = '12345678')
+		response = self.client.get('/profile/')
+		self.assertContains(response, self.user2_post.subject)
+
+	def test_profile_contains_entry_created_by_logged_in_users_only(self):
+		self.client.login(username = 'jim', password = '12345678')
+		response = self.client.get('/profile/')
+		self.assertNotContains(response, self.user1_post.subject)		
+
+	def test_logout_redirect_to_login(self):
+		self.client.login(username = 'jim', password = '12345678')
+		response = self.client.get('/logout/', follow = True)
+		self.assertRedirects(response, '/login/')
+		self.assertTemplateUsed(response, 'diary/login.html')
+
+	#test entry edit
+
+	def test_entry_edit_viewed_by_author(self):
+		self.client.login(username = 'spam', password = '12345678')
+		user1_entry_edit_url = '/entry/edit/%s' % self.user1_post.id		
+		response = self.client.get(user1_entry_edit_url, follow = True)
+		self.assertEqual(response.context['user'], self.user1_post.author)
+		self.assertTemplateUsed(response, 'diary/entry_edit.html')		
+
+	def test_entry_cannot_be_edited_by_others(self):
+		self.client.login(username = 'jim', password = '12345678')
+		user1_entry_edit_url = '/entry/edit/%s' % self.user1_post.id		
+		response = self.client.get(user1_entry_edit_url, follow = True)
+		self.assertNotEqual(response.context['user'], self.user1_post.author)
+		self.assertTemplateUsed(response, 'diary/index.html') # unauthorized user are redirected to the previous page		
+
+	#end test entry edit
+
+	# test entry delete
+
+	def test_entry_can_be_deleted_by_author(self):
+		self.client.login(username = 'spam', password = '12345678')
+		response = self.client.post('/entry/delete/', {'entry-id': self.user1_post.id}, follow = True)
+		self.assertRedirects(response, '/')		
+
+	def test_entry_are_actually_deleted_by_author(self):
+		self.client.login(username = 'spam', password = '12345678')
+		response = self.client.get('/')
+		self.assertContains(response, self.user1_post.subject)
+		response = self.client.post('/entry/delete/', {'entry-id': self.user1_post.id}, follow = True)
+		self.assertRedirects(response, '/')
+		self.assertNotContains(response, self.user1_post.subject)		
+
+	def test_entry_can_not_be_deleted_by_others(self):
+		self.client.login(username = 'jim', password = '12345678')
+		response = self.client.post('/entry/delete/', {'entry-id': self.user1_post.id}, follow = True)		
+		self.assertEqual(response.status_code, 400)
+		self.assertContains(response, 'Error: Entries can only be deleted by the author.', status_code=400)		
+
+	def test_entry_are_actually_not_deleted_by_others(self):
+		self.client.login(username = 'jim', password = '12345678')
+		response = self.client.get('/')
+		self.assertContains(response, self.user1_post.subject)
+		response = self.client.post('/entry/delete/', {'entry-id': self.user1_post.id}, follow = True)
+		self.assertContains(response, 'Error: Entries can only be deleted by the author.', status_code=400)		
+		response = self.client.get('/')
+		self.assertContains(response, self.user1_post.subject, )		
+
+	# end test entry delete
+		
+	def test_entry_can_be_viewed_with_correct_entry_id_and_slug(self):
+		self.client.login(username = 'spam', password = '12345678')				
+		response = self.client.get('/entry/%s/%s/' % (self.user1_post.id, self.user1_post.slug))
+		self.assertTemplateUsed(response, 'diary/entry.html')
+
+	def test_entry_CANNOT_be_viewed_with_correct_entry_id_and_slug(self):
+		self.client.login(username = 'spam', password = '12345678')				
+		response = self.client.get('/entry/%s/%s/' % (self.user1_post.id, "this-is-madness!"))
+		self.assertEqual(response.status_code, 404)

@@ -1,17 +1,22 @@
 {% extends 'base.html' %}
+{% load staticfiles %}
 
 {% block css %}
+	<link rel="stylesheet" type="text/css" href='//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css'>
+	<link rel="stylesheet" type="text/css" href='{% static "library/summernote/summernote.css" %}'>
 	<style type="text/css">
 		.form-control, .btn {
 			border-radius: 0;
 			margin-top: 1em;
+		}		
+
+		input[name='subject'] {
+			margin-bottom: 1em;
 		}
 
-		textarea {
-			min-height: 20em;
-			max-width: 100%;
-			resize: none;
-		}
+		.note-editable {
+			background-color: white;
+		}		
 
 		img {
 			width: 100%;
@@ -22,34 +27,42 @@
 			width: 50%;
 		}
 
-
-
+		textarea {
+			min-height: 20em;
+			max-width: 100%;
+			resize: none;
+		}
 
 	</style>
 {% endblock css %}
 
 {% block content %}	
+	<iframe src="{% url 'diary:test' %}" width = '100%'></iframe>
 	{% if entry %}
 		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post' enctype="multipart/form-data">
 			{% csrf_token %}
-			<button id = 'delete-entry' class = 'btn btn-danger'>Delete Entry</button>
-			<input type = 'submit' value = 'Update Entry' class = 'btn btn-warning pull-right'>
-			<input class = 'form-control' type = 'text' name = 'entry-subject' value = '{{ entry.subject }}' autocomplete = 'off'>
-			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body }}</textarea>
+			<input class = 'form-control' type = 'text' name = 'subject' value = '{{ entry.subject }}' autocomplete = 'off'>
+			<div id = 'summernote'></div>
+			<textarea class = 'form-control' name = 'body'>{{ entry.body }}</textarea>		
 			<input type = 'hidden' value = 'False' name = 'entry-delete'>
 
+			
 			<input class = 'form-control' type = 'hidden' placeholder = 'Selected Photo' name = 'selected-entry-photo'>
-
-			<input class = 'form-control' type = 'file' name = 'new-entry-photo' id = "multi" multiple>
-			<input type = 'hidden' name = "invalid-images">
-			{% if entry.entryphoto_set.first != None %}
-				{% for picture in entry.entryphoto_set.all %}
-					{# <h1>{{ picture.id }}</h1> #}
-					<img src="{{picture.image_file.url}}" id = '{{ picture.id }}' >
-				{% endfor%}
-			{% endif %}
+			{# <input class = 'form-control' type = 'file' name = 'new-entry-photo' id = "multi" multiple> #}
+			<input type = 'hidden' name = "invalid-images">			
+			<div class = 'row'>
+				<div class = 'col-md-6'>
+					<div id = 'delete-entry' class = 'btn btn-danger btn-block'>Delete Entry</div>
+				</div>
+				<div class = 'col-md-6'>
+					<input type = 'submit' value = 'Update Entry' class = 'btn btn-warning btn-block'>
+				</div>
+			</div>
 		</form>
-		<div id = 'image-previews'></div>	
+		<form id = 'delete-entry-form' action = "{% url 'diary:entry_delete' %}" method = "post">
+			{% csrf_token %}
+			<input name = 'entry-id' type = 'text' value = "{{ entry.id }}">			
+		</form>
 
 
 	{% else %}
@@ -60,135 +73,46 @@
 
 {% endblock content %}
 
-{% block script %}
-	{% load staticfiles %}
+{% block script %}	
 	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "library/summernote/summernote.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "js/entry-editor.js" %}'></script>
+
 	<script type="text/javascript">
-		$(document).ready(function(){
+		$(document).ready(function(){				
+			summernote.code($('textarea[name="body"]').val())
+			$('textarea[name="body"]').hide();
+
+			currentEntry = $('input[name="entry-id"]').val()			
+
 			$('#delete-entry').click(function(){
-				var delEntry = confirm('Delete this diary entry?')
-				if (delEntry) {
-					$("input[name='entry-delete']").val('True')										
-					$('#edit-entry-form').submit()
-					return false
-					
-				}
-
-				else {
-					return false
-				}
-
-
+				var delEntry = confirm('Delete this diary entry?')				
+				if (delEntry) {					
+					$('#delete-entry-form').submit()										
+				}				
 			})
 
 			$('input[type="submit"]').click(function(e){
-				var sub = $('input[name = "entry-subject"]').val()
-				var bod = $('textarea[name = "entry-body"]').val()								
-				if (sub.length * bod.length == 0) {
-					e.preventDefault()					
+				e.preventDefault()					
+				if ($('#final-date').val() == ""){
+					fillPublishTimestamp()
 				}
-			})
+				var sub = $('input[name = "subject"]').val()
+				var bod = $('textarea[name = "body"]').val()								
+				if (sub.length == 0 && bod.length == 0) {
+					var submitEmptyEntry = confirm("You're about to publish an empty entry, is it ok?")
+					if (!submitEmptyEntry){
+						return
+					}
+				}		
+				$('#edit-entry-form').submit();
+			})			
 
 			$('#edit-entry-form textarea').focus(function(){
 				$(this).autosize();
 			})
+		})
 
-			$('img').click(function(){				
-				var selectPhotoIDs = $("input[name='selected-entry-photo']").val()				
-				var thisID = $(this).attr('id')
-				var IDs = selectPhotoIDs.split(',')				
-				if (IDs.indexOf(thisID) == -1) {					
-					var photoIDToAdd = thisID + ','
-					selectPhotoIDs += photoIDToAdd
-					$("input[name='selected-entry-photo']").val(selectPhotoIDs)	
-					$(this).addClass('half-size')
-				} 
-
-				else {
-					/*alert(IDs)
-					alert(IDs)*/
-					IDs.splice(IDs.indexOf(thisID),1)
-					$("input[name='selected-entry-photo']").val(IDs)					
-					$(this).removeClass('half-size')
-				}
-				
-				
-			})
-
-			var fileList = []
-
-			function verifyImage(image) {
-				var reader = new FileReader()
-				var img = new Image() // Image object used to test the uploaded image file
-
-				reader.readAsDataURL(image)
-
-
-
-				reader.onloadend = function(){
-					img.src = reader.result
-					img.onload = function(_image){
-						var preview = document.getElementById('image-previews')						
-						$(preview).append('<img src = "' + reader.result + '">')												
-						/*console.log(img.src)
-						console.log(image)						*/
-					}
-					img.onerror = function(){
-						console.log(image.name + ' is invalid')
-						fileList.push(image.name)
-						$('input[name="invalid-images"]').val(fileList)
-					}					
-				} 
-
-				//console.log(image + ' is valid.')
-			} 
-
-			$('#multi').change(function(){
-
-				// prevent user trying to submit multiple images 
-				$('input[name="invalid-images"]').val(null) 
-				fileList = []
-
-
-				if (this.files.length < 1) {
-					console.log('Empty file input at #multi')
-					return
-				}
-				
-				//else
-
-				var files = this.files
-				var invalidFiles = []
-				var allowedFormat = ['jpg', 'jpeg', 'gif','png','bmp']				
-
-				for (var i = 0; i < files.length ; i++) {										
-					var file = this.files[i]
-					var name = file.name
-					var extension = file.name.split('.').pop().toLowerCase() // ensure match with lowercased allowedFormat
-					var sizeInMB = file.size/1024/1024					
-
-					if (sizeInMB > 50) { 
-						invalidFiles.push(file) 
-						console.log(name + ' is too big, please upload images under 50 MBs.')
-					}
-
-					if ( allowedFormat.indexOf(extension) == -1 ) {  // not in allowed formats
-						invalidFiles.push(file) 
-						console.log(name + ' is not in a supported file format, please upload JPG / GIF / PNG or BMP images only.')
-					}
-
-					try {
-						verifyImage(file)
-					}
-
-					catch (error) {
-						console.log('foo.jpg?')
-					}					
-					
-				} // end for				
-				return 
-			})			
-		})		
 	</script>
 
 {% endblock script %}

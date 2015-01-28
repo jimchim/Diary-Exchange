@@ -25,7 +25,10 @@
 	{% if entry%}
 	<div class = 'entry break-words'>
 		<h2>{{ entry.subject }}</h2>
-		<p class = 'meta-data'>Posted by: {{ entry.author.first_name }} at {{ entry.published }} | Last Edited: {{ entry.edited }}  <a href="{% url 'diary:entry_edit_slug' entry.id entry.slug %}">edit</a></p>
+		<p class = 'meta-data'>Posted by: {{ entry.author.first_name }} at {{ entry.published }} | Last Edited: {{ entry.edited }}  {% if user == entry.author %}<a href="{% url 'diary:entry_edit_slug' entry.id entry.slug %}">edit</a>{% endif %}</p>
+		
+		{# <h1>{{ user }}</h1> #}
+		{# <p>{{ entry.author }}</p> #}
 		<p>{{ entry.body|safe|linebreaks }}</p>		
 	</div>
 	{% else %}

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from django.http import HttpResponse, Http404, HttpResponseBadRequest
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
@@ -13,9 +13,12 @@ from django.utils import timezone
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 
+from datetime import datetime
 from diary.models import Entry, EntryPhoto, UserUploadedPhoto
 from diary.forms.diary_forms import registerForm
 from PIL import Image
+
+import os, sys
 # Create your views here.
 
 
@@ -26,7 +29,7 @@ def login(request):
 		un = request.POST['login_username']
 		pw = request.POST['login_password']		
 		user = authenticate(username = un, password = pw)
-		nextPage = request.GET['next']
+		nextPage = request.GET.get('next',"/")
 
 		if user != None:
 			auth.login(request, user)
@@ -34,14 +37,14 @@ def login(request):
 				messages.success(request, 'Logged in')
 				return redirect('diary:index')				
 			else:				
-				messages.info(request, 'Redirecting you to the previous page')
+				# messages.info(request, 'Redirecting you to the previous page')
 				return redirect(nextPage)				
 
 		else:		
-			return render(request, 'diary/login.html', {'message': msg})	
+			return render(request, 'diary/login.html', {'message': 'Login Failed'})	
 
 	if request.GET:
-		nextPage = request.GET['next']
+		nextPage = request.GET.get("next",'/')
 
 	return render(request, 'diary/login.html', {'next': nextPage})
 
@@ -62,31 +65,36 @@ def register(request):
 @login_required
 def logout(request):	
 	auth.logout(request)	
-	return redirect('diary:index')
+	return redirect('diary:login')
 
 
 @login_required
 def index(request):		
-	entries = Entry.objects.filter(is_draft = False).order_by('-published')			
+	messages.info(request, request.META.get('HTTP_REFERER', ""))
+	entries = Entry.objects.filter(is_draft = False).filter(published__lte = timezone.now()).order_by('-published')			
 	return render(request, 'diary/index.html', {'entries': entries})
 
 
 @login_required
 def new_entry(request):
 	if request.method == "GET":		
-		request.session['current_entry'] = None
-		return render(request, 'diary/new_entry.html')
+		#request.session['current_entry'] = None
+		return render(request, 'diary/new_entry.html', {'years': range(1991, datetime.now().year)})
+
 	elif request.method == "POST":				
 		entry = None
-		if request.session['current_entry'] != None: #Entry was created by Ajax call to save the draft
-			entry = Entry.objects.get(pk = request.session['current_entry'])
-		else:
+
+		try:
+			entry = Entry.objects.get(pk = request.POST.get('entry-id'))
+		except:
 			entry = Entry()		
+
 		entry.subject = request.POST.get('subject', "")
 		entry.body = request.POST.get('body', "")
 		entry.author = request.user
 		entry.is_draft = False #need to set this to make it publicly available
-		entry.save()
+		entry.published = datetime.fromtimestamp(int(request.POST.get('timestamp', "")))		
+		entry.save()				
 
 		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug))		
 
@@ -108,19 +116,18 @@ def save_entry(request):
 		subject = request.POST.get('subject', "")
 		body = request.POST.get('body', "")
 
-		if request.session['current_entry'] == None: #new entry
-			entry = Entry.objects.create(subject = subject, body = body, author = request.user)
-			request.session['current_entry'] = entry.id
+		if request.POST.get('current_entry', "false") == "false": #new entry
+			entry = Entry.objects.create(subject = subject, body = body, author = request.user)			
 			return HttpResponse(entry.id)	 
 
 		else: #update entry		
-			entry = Entry.objects.get(pk = request.session['current_entry'])			
+			entry = Entry.objects.get(pk = request.POST.get('current_entry'))
 			if entry.subject != subject:
 				entry.subject = subject				
 			if entry.body != body:
 				entry.body = body				
 			entry.save()			
-			return HttpResponse("entry updated")	 					
+			return HttpResponse(entry.id)	 					
 	else:
 		raise Http404		
 
@@ -133,105 +140,62 @@ def entry(request, entry_id, **slug):
 		where entry_id is required in both cases in order to avoid url clashing
 		(slug might not be unique in all entries)
 	"""
-	entry = Entry.objects.get(pk=entry_id)
+	entry = get_object_or_404(Entry, pk = entry_id)		
+	if slug and slug.get('slug') != entry.slug:
+		raise Http404
 
-	if slug:
-		url_slug = slug.get('slug', False)
-		if url_slug == False:
-			return redirect(reverse('diary:index'))
-		elif url_slug != entry.slug:
-			return redirect(reverse('diary:index'))
-
-	if entry.entryphoto_set.count() > 0:
-		entry_photos = entry.entryphoto_set.all()
-		return render(request, 'diary/entry.html', {'entry': entry, 'entry_photos': entry_photos})	
+	if entry.published > timezone.now() and request.user != entry.author:
+		raise Http404	
 	
 	return render(request, 'diary/entry.html', {'entry': entry})
 
 
 @login_required
+def entry_delete(request):
+	error_message = ""
+	if request.method == 'POST':
+		try:
+			entry = Entry.objects.get(pk = request.POST.get('entry-id'))			
+			if request.user == entry.author:
+				entry.self_destruction()
+				return redirect('diary:index')
+			else:
+				error_message = "Error: Entries can only be deleted by the author."
+		except:
+			error_message = "Error: Entry does not exist."		
+
+		response = render(request, 'base.html', {'error_message': error_message})
+		return HttpResponseBadRequest(response)
+	else:
+		raise Http404
+
+
+@login_required
 def entry_edit(request, entry_id, **slug):
-	entry = Entry.objects.get(pk=entry_id)
+	entry = get_object_or_404(Entry, pk=entry_id)	
+	if slug and slug.get('slug') != entry.slug: #slug in url should match entry's slug		
+		raise Http404
+
+	if request.user != entry.author:
+		messages.info(request, 'Entries can only be edited by the author.')
+		return redirect(request.META.get('HTTP_REFERER', "/"))
+
+
+	if request.method == "GET":
+		return render(request, 'diary/entry_edit.html', {'entry': entry})		
 
 	if request.method == 'POST':		
-
-		if request.POST['entry-delete'] == 'True' and request.user.is_superuser:			
-			entry.self_destruction()							
-			return redirect('diary:index')
-
-		else:
-			messages.info(request, "You do not have permission to delete this post.") 
-			
-		#handle remove photo, clean passed photo ids
-		selected_photos = request.POST['selected-entry-photo']
-
-		if len(selected_photos) > 0:
-			selected_photos = selected_photos.split(',')
-			photoIDs = []
-			for photoID in selected_photos:
-				if len(photoID) > 0:
-					try:
-						photoIDs.append(int(photoID))
-					except ValueError:
-						return redirect('diary:entry', entry_id = int(entry.id))
-
-			try:	
-				entry.remove_entry_photos_by_ids(photoIDs)				
-			except:
-				return redirect('diary:entry', entry_id = int(entry.id))			
-
-		#handel adding photo
-		if request.FILES:					
-			uploaded_files = request.FILES.getlist('new-entry-photo')			
-			invalids = request.POST['invalid-images'].split(',')			
-			cleaned_files = false_files = []			
-			
-			if invalids == [u'']: #pass all files to check with PIL if no js error reported				
-				cleaned_files = uploaded_files
-			else: 
-				result = entry.filter_javascript_invalid(uploaded_files, invalids)
-				cleaned_files = result
-				false_files += [image for image in uploaded_files if image not in cleaned_files]							
-			
-			failed = len(false_files)
-
-			for image in cleaned_files:
-				result = entry.process_entryphoto(image)
-				if result[0] != True:
-					failed += 1
-					false_files.append(image)					
-				else:
-					EntryPhoto.objects.create(article = entry, image_file = result[1])
-
-			if failed < len(uploaded_files):
-				entry.update_last_edited_time()							
-
-			if failed > 0: #print bad news to user.
-				if failed == 1:
-					msg = "A file cannot be uploaded, please try again with a valid JPG/GIF/PNG or BMP formatted image, (Max Size: 50MB)."
-				else: 
-					msg = "%s files cannot be uploaded, please try again with valid JPG/GIF/PNG or BMP formatted images, (Max Size: 50MB)." % failed
-				messages.info(request, msg)
-				messages.info(request, "Upload Failed:")
-				for item in false_files:					
-					messages.info(request, "%s | %.2f kb" %(item, item.size/1024.0))
-				return redirect('diary:entry_edit_slug', entry_id = int(entry.id), slug = str(entry.slug))					
-
 		#handle subject and body change, edited time is updated if changes presence
-		sub = request.POST['entry-subject']
-		bod = request.POST['entry-body']		
-
+		sub = request.POST.get('subject', entry.subject)
+		bod = request.POST.get('body', entry.body)		
 		if sub != entry.subject:
 			entry.update_subject(sub)
 
 		if bod != entry.body:
 			entry.update_body(bod)
-
-		entry.save()
-
-		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug) ) #go to entry after update
-
-	return render(request, 'diary/entry_edit.html', {'entry': entry})
+		
+		entry.save() #changed or not, save it.
+		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug) ) #go to entry after update	
 
 
 def check_username(request):	
@@ -256,12 +220,14 @@ def check_username(request):
 @login_required
 def add_entry_photo(request):	
 	if request.method == 'POST' and request.is_ajax():
-
 		entry = None
-		if request.session['current_entry'] == None:
-			entry = Entry.objects.create(subject = request.POST.get('subject', ""), body = request.POST.get('body',""), author = request.user)
-		else:
-			entry = Entry.objects.get(pk = request.session['current_entry'])
+		try:
+			entry = Entry.objects.get(pk = request.POST.get('entry_id',None))
+		except:
+			return HttpResponseBadRequest('Error: Cannot attach entry photo to a valid entry.')		
+
+		if entry.author != request.user:
+			return HttpResponseBadRequest('Error: Only the author may update/edit an entry.')					
 
 		if request.FILES and len(request.FILES) == 1:			
 			result = entry.process_entryphoto(request.FILES['photo'])
@@ -269,14 +235,22 @@ def add_entry_photo(request):
 				photo = EntryPhoto.objects.create(article = entry, image_file = result[1])
 				return HttpResponse(photo.image_file.url)				
 			else:					
-				return HttpResponse("Failed")				
+				return HttpResponse("Error: Failed")				
 		else:
-			return HttpResponseBadRequest('Cannot process more than 1 photo at a time.')			
+			return HttpResponseBadRequest('Error: Cannot process more than 1 photo at a time.')			
 	else:
 		raise Http404
 
 def test(request):
-	return HttpResponse("You're at test page")
+	message = "You're at test page"
+	message = ""
+	filelist = []
+	for filename in os.listdir('./media/compressed'):
+		filelist.append(filename)
+		#message += "<img src = >" + filename + "</p>"
+	
+	#return HttpResponse(message)
+	return render(request, 'diary/test.html', {'files': filelist})
 
 
 @login_required

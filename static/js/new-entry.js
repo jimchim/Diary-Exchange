@@ -58,20 +58,20 @@ $(document).ready(function(){
 		}		
 		readableTime = moment(dateStamp + " " + timeStamp).calendar()
 		$('#final-date').val(dateTimeToTimestamp(dateStamp, timeStamp))		
-		return readableTime
-		
+		return readableTime		
 	}
 
 	$('#toggle-time-picker').click(function(){
 		$('#publish-time').text('')
-		$(this).hide()
-		$('#time-picker').slideDown()		
+		$(this).hide(function(){
+			$('#time-picker').show()					
+		})
 	})
 
 	$('#set-time').click(function(){
 		$('#publish-time').text("Publish Date: " + fillPublishTimestamp());
 		$('#toggle-time-picker').text('Change Publish Date');		
-		$('#toggle-time-picker').show();		
 		$('#time-picker').hide();
+		$('#toggle-time-picker').show();		
 	})
 })		

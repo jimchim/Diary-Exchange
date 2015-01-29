@@ -70,7 +70,7 @@ def logout(request):
 
 @login_required
 def index(request):		
-	messages.info(request, request.META.get('HTTP_REFERER', ""))
+	# messages.info(request, request.META.get('HTTP_REFERER', ""))
 	entries = Entry.objects.filter(is_draft = False).filter(published__lte = timezone.now()).order_by('-published')			
 	return render(request, 'diary/index.html', {'entries': entries})
 
@@ -93,7 +93,7 @@ def new_entry(request):
 		entry.body = request.POST.get('body', "")
 		entry.author = request.user
 		entry.is_draft = False #need to set this to make it publicly available
-		entry.published = datetime.fromtimestamp(int(request.POST.get('timestamp', "")))		
+		entry.published = datetime.fromtimestamp(int(request.POST.get('timestamp', datetime.now().strftime('%s'))))		
 		entry.save()				
 
 		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug))		
@@ -126,6 +126,7 @@ def save_entry(request):
 				entry.subject = subject				
 			if entry.body != body:
 				entry.body = body				
+			entry.edited = timezone.now()
 			entry.save()			
 			return HttpResponse(entry.id)	 					
 	else:
@@ -175,11 +176,11 @@ def entry_edit(request, entry_id, **slug):
 	entry = get_object_or_404(Entry, pk=entry_id)	
 	if slug and slug.get('slug') != entry.slug: #slug in url should match entry's slug		
 		raise Http404
-
 	if request.user != entry.author:
 		messages.info(request, 'Entries can only be edited by the author.')
 		return redirect(request.META.get('HTTP_REFERER', "/"))
 
+	#safe to assume below the user is the author, the id and slug used in URL matched an entry
 
 	if request.method == "GET":
 		return render(request, 'diary/entry_edit.html', {'entry': entry})		
@@ -188,11 +189,25 @@ def entry_edit(request, entry_id, **slug):
 		#handle subject and body change, edited time is updated if changes presence
 		sub = request.POST.get('subject', entry.subject)
 		bod = request.POST.get('body', entry.body)		
-		if sub != entry.subject:
-			entry.update_subject(sub)
 
+		if sub != entry.subject:
+			entry.update_subject(sub) #renew update time
 		if bod != entry.body:
 			entry.update_body(bod)
+
+		if request.POST.get('timestamp', "") != "":
+			try:
+				entry.published = datetime.fromtimestamp(int(request.POST.get('timestamp',""))) 
+			except:
+				#if anything goes wrong, use original published time.
+				entry.published = datetime.fromtimestamp(int(entry.published.strftime('%s'))) 
+
+		save_as_draft = request.POST.get('is_draft', False)
+		
+		if save_as_draft == 'True':
+			entry.is_draft = True #need to set this to make it publicly available			
+		else:
+			entry.is_draft = False		
 		
 		entry.save() #changed or not, save it.
 		return redirect('diary:entry_slug', entry_id = int(entry.id), slug = str(entry.slug) ) #go to entry after update	

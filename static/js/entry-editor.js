@@ -7,8 +7,7 @@ var body = $('textarea[name="body"]')
 var ID = $('input[name="entry-id"]')
 
 var summernote = $('#summernote').summernote({
-	height:400,
-	focus: true,
+	height:400,	
 	toolbar: [
 		['style', ['bold', 'italic', 'underline', 'clear']],
 		['fontsize', ['fontsize']],
@@ -58,7 +57,7 @@ var summernoteOnImageUpload = function(files, editor, welEditable){
 
 }
 
-//$('textarea[name="body"]').hide();	//if summernote cannot instantiate, allow user to use textarea
+$('textarea[name="body"]').hide();	//if summernote cannot instantiate, allow user to use textarea
 
 var saveEntry = function(callback){		
 	var formData = new FormData()

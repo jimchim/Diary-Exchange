@@ -7,6 +7,7 @@ from diary.models import Entry, EntryPhoto
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
+import datetime
 # Create your tests here.
 
 class registerFormTest(TestCase):
@@ -215,6 +216,8 @@ class EntryViewTest(TestCase):
 		self.user = User.objects.create_superuser(username = 'spam', email = 'asfd@askljf.com', password = '12345678')
 		self.user2 = User.objects.create_superuser(username = 'jim', email = 'jim@askljf.com', password = '12345678')
 		self.user1_post = Entry.objects.create(subject = 'Entry 1', body = 'body', author = self.user, is_draft = False)
+		tomorrow = datetime.date.today() + datetime.timedelta(days = 1)
+		self.user1_post2 = Entry.objects.create(subject = 'Future Entry', body = 'body', author = self.user, is_draft = False, published = tomorrow)
 		self.user2_post = Entry.objects.create(subject = 'Entry 2', body = 'body', author = self.user2, is_draft = True)
 		self.client = Client()
 		self.login_data = {
@@ -336,3 +339,19 @@ class EntryViewTest(TestCase):
 		self.client.login(username = 'spam', password = '12345678')				
 		response = self.client.get('/entry/%s/%s/' % (self.user1_post.id, "this-is-madness!"))
 		self.assertEqual(response.status_code, 404)
+
+	def test_entry_set_to_post_in_the_future_cannot_be_seen_publicly(self):
+		self.client.login(username = 'spam', password = '12345678')				
+		response = self.client.get('/')	#public
+		self.assertNotContains(response, 'Future Entry')		
+		future_entry = Entry.objects.get(subject = 'Future Entry')
+		self.assertEqual(future_entry.author, response.context['user'])
+		
+	def test_entry_set_to_post_in_the_future_can_be_seen_privately(self):
+		self.client.login(username = 'spam', password = '12345678')				
+		response = self.client.get('/profile/') #private
+		self.assertContains(response, 'Future Entry')
+		future_entry = Entry.objects.get(subject = 'Future Entry')
+		self.assertEqual(future_entry.author, response.context['user'])	
+
+	

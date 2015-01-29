@@ -19,6 +19,7 @@
 {% endblock css %}
 
 {% block content %}	
+	<div><button id = 'debug2'>Debug</button></div>
 	{% for file in files %}
 		<div class = 'stickers'>
 			<a data-clipboard-text="{{ MEDIA_URL }}stickers/{{file}}" href="{{ MEDIA_URL }}stickers/{{file}}" target="_blank" title = 'click to copy'><img src = '{{ MEDIA_URL }}/compressed/{{file}}' width = '100%'></a>			
@@ -46,13 +47,21 @@
 			})
 
 			clipboard.on('aftercopy', function(){
-				alert('copied')
+				var text = ZeroClipboard.getData()
+				console.log(text)
+				
 			})
 			$('.stickers a').click(function(e){
 				e.preventDefault()
 				currentSticker = $(this).attr('href')
 				$('#debug').click()
 			})
+
+			$('#debug2').click(function(){
+				var text = clipboard.getData('text/plain')
+				console.log(text)
+			})
 		})
+
 	</script>
 {% endblock script %}

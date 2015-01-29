@@ -1,11 +1,25 @@
 {% extends 'base.html' %}
 
+{% block css %}
+	<style type="text/css">
+		td {
+			border : 1px solid black;
+		}
+	</style>
+{% endblock css %}
+
+
 {% block content %}
-	{% for entry in entries %}
-	<div class = 'entry-summary break-words'>
-		<h1>{{ entry.subject }}</h1>
-		<p>{{ entry.body|safe|linebreaks|truncatechars:300 }}</p>
-	</div>
-	{% endfor %}	
+	<table>
+		{% for entry in entries %}
+		<tr>
+			<td><a title = "www.diaryexchange.com{% url 'diary:entry_slug' entry.id entry.slug %}"  href="{% url 'diary:entry_slug' entry.id entry.slug %}">{{ entry.subject }}</a></td>
+			
+			<td title = "{{ entry.edited}}">Last Edited: {{ entry.edited|date:'N d H:i'  }} <a href = "{% url 'diary:entry_edit_slug' entry.id entry.slug %}"><span class = 'glyphicon glyphicon-edit'></span></a></td>
+			<td>{% if entry.is_draft == True %}Draft{% else %}Published{%endif%}</td>
+		</tr>
+		{% endfor %}			
+
+	</table>
 {% endblock content %}
 

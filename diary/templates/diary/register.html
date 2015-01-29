@@ -1,20 +1,167 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
+{% load diary_filters %}
+
+{% block css %}
+	<style type="text/css">
+		.pillar {
+			height: 1em;
+		}
+
+		.errorlist {
+			list-style-type: none;
+			text-align: left;
+		}
+	</style>
+	
+{% endblock css %}
 
 {% block content %}
-	<h1>Register</h1>
 
-	{% if form %}
+	{% if form %}		
 		<form action = "{% url 'diary:register' %}" method = "post" > {% csrf_token %}
 			{# {{ form }}			 #}
+			<div class = 'col-md-12'>
+				<h1>Register</h1>
+				<div class = 'form-group has-feedback'>
+					{# <p class = 'help-block' >{{ form.username.label }}</p> #}
+					{{ form.username|add_class:"form-control"|placeholder:"Username"|attr:"autocomplete:off"|attr:"required" }}					
+					<p class = 'help-block'>{{ form.username.errors.as_text }}</p>
+				</div>
+			</div>
+			<div class = 'col-md-12'>				
+				{{ form.email|add_class:"form-control"|placeholder:"Email"|attr:"required" }}
+				<p class = 'help-block'>{{ form.email.errors.as_text }}</p>
+			</div>
+			<div class = 'col-md-12'>				
+				<div class = 'col-md-6' style = 'padding-left: 0'>
+				{{ form.password|append_attr:"class:form-control col-sm-6"|placeholder:"Password"|attr:"required" }}
+				</div>
+				<div class = 'col-md-6' style = 'padding-right: 0'>				
+				{{ form.confirm_password|append_attr:"class:form-control col-md-6"|placeholder:"Confirm Password"|attr:"required" }}
+				</div>
+				<p class = 'help-block'>{{ form.password.errors.as_text }}</p>
+				<p class = 'help-block'>{{ form.confirm_password.errors.as_text }}</p>
+				
+
+			</div>			
+			{% comment %}
 			{% for fields in form %}				
 				<div>
-					<p>{{ fields.label_tag }}</p>
-					{{ fields}}					
+					{# <p>{{ fields.label_tag }}</p> #}
+					{# <h3>{{ fields.label_tag }}</h3> #}
+
+					<p>{{ fields.label}}</p>
+					{{ fields|attr:"class: form-control"|placeholder:"qwerqwe"  }}					
+					{% for error in fields.errors %}
+						<p class = 'help-block'>{{ error }}</p>
+					{% endfor %}
+
+					{# <p class = 'help-block'>{{ fields.errors.as_text }}</p> #}
 				</div>
 				
 			{% endfor %}
-			<input type = 'submit'>
+			{% endcomment %}
+			<div class = 'col-md-12'>
+				<div class = 'pillar'></div>
+				<input type = 'submit' class = 'btn btn-block btn-warning'>
+			</div>
 		</form>
 	{% endif  %}
+		
+	{% comment %}
+		<div class = 'col-md-12'>
+		{% for field, errors in form.errors.items %}
+			{% for error in errors %}
+				<p>{{ error }}</p>
+			{% endfor %}		
+		{% endfor %}
+		</div>
+	{% endcomment %}
+	
 {% endblock content %}
+
+{% block script %}
+	<script type="text/javascript">
+		$(document).ready(function(){
+
+			var inputFeedbackOK = '<span class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true">'
+			var inputFeedbackError = '<span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true">'
+
+			var ajaxUsernameCheck = function(username){
+				result = ""
+				var ajaxCall = $.ajax({
+					url: "/ajax/check_username/?username=" + username,
+					type: 'get',
+				})
+				
+				ajaxCall.done(function(data){
+					if (data == "False") {						
+						markUsernameInput(true)
+					}					
+					else if (data == "True") {
+						markUsernameInput(false)
+					}
+					else {
+						markUsernameInput(data)
+					}						
+					
+				})
+
+				ajaxCall.fail(function(){
+					markUsernameInput("Error")
+				})								
+			}
+
+			$('#ajax').click(function(){
+				if ($('input[name="username"]').val().length != 0) {
+					var username = $('input[name="username"]').val();
+					ajaxUsernameCheck(username)					
+				}										
+			});
+
+			$('input[name = username]').change(function(){				
+				if ($(this).val().length > 0) {
+					var username = $('input[name="username"]').val();
+					ajaxUsernameCheck(username)					
+				}
+
+				else {
+					var target = $(this).parents('.form-group')
+					target.removeClass()
+					target.addClass('form-group has-feedback has-error')
+					target.find('.form-control-feedback').remove()
+					target.append(inputFeedbackError)
+				}
+			})
+
+			var markUsernameInput = function(result){
+				var usernameInputWrapper = $('input[name = username]').parents('.form-group')
+				if (result == true) {
+					//alert('Available')
+					usernameInputWrapper.removeClass()
+					usernameInputWrapper.addClass('form-group has-feedback has-success')					
+					usernameInputWrapper.find('.form-control-feedback').remove()
+					usernameInputWrapper.append(inputFeedbackOK)
+					
+				}
+
+				else if (result == false) {
+					//alert('Already Taken')
+					usernameInputWrapper.removeClass()
+					usernameInputWrapper.addClass('form-group has-feedback has-error')					
+					usernameInputWrapper.find('.form-control-feedback').remove()
+					usernameInputWrapper.append(inputFeedbackError)
+				}
+				else if (result == "Error"){
+					alert('Server Error: Cannot Verify Username Availability')	
+				}
+
+				else { 
+					alert('Unknown Error: Cannot Verify Username Availability')	
+					console.log(data)
+				}
+			}
+		});
+	</script>
+{% endblock script %}

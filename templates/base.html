@@ -19,9 +19,9 @@
 				<div class = 'container'>
 					<h1 id = 'logo'><a href="/">Diary Exchange</a></h1>
 					{% if user.is_authenticated %}
-						<a href = '/logout'>logout</a> | <a href = '/entry/new/'>new entry</a>
+						<a href = '/logout'>logout</a> | <a href = '/entry/new/'>new entry</a> | <a href = '/profile/'>profile</a>
 					{% else %}
-					    <a href = '/login'>login</a>
+					    <a href = '/login'>login</a> | <a href = '/register/'>register</a>
 					{% endif %}
 
 				</div>
@@ -30,14 +30,17 @@
 		<div class = 'container'>					
 			<div class = 'row'>
 				<div class = 'col-md-6 col-md-offset-3' id = 'page-content'>
-					{% block content %}{% endblock content %}
+					<h1>{{ error_message }}</h1>
 					{% if messages %}
-						<ul class="messages">
+						<div class="alert alert-dismissible info" role="alert">
+						{# <div class="alert alert-dismissible {% if message.tags %}{{ message.tags }}{% endif %}" role="alert"> #}
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 							{% for message in messages %}
-								<h1{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</h1>
-							{% endfor %}
-						</ul>
-					{% endif %}						
+								<p>{{ message }}</p>
+							{% endfor %}								
+						</div>											
+					{% endif %}							
+					{% block content %}{% endblock content %}
 				</div>
 			</div>
 		</div>
@@ -49,10 +52,7 @@
 	</div>			
 	</body>
 	<script type="text/javascript" src = '{% static "library/jquery.js" %}'></script>	
-	<script type="text/javascript">
-		/*$(document).ready(function(){
-			$('#test').css('color','red')
-		})*/
-	</script>
+	<script type="text/javascript" src = '{% static "library/bootstrap/js/bootstrap.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "js/base.js" %}'></script>		
 	{% block script %}{% endblock script %}
 </html>

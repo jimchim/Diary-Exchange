@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from django.db import models, migrations
+import datetime
+from django.utils.timezone import utc
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('diary', '0005_auto_20150120_0611'),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name='entry',
+            name='edited',
+            field=models.DateTimeField(default=datetime.datetime(2015, 1, 19, 22, 18, 3, 290145, tzinfo=utc), verbose_name=b'Time Edited'),
+            preserve_default=True,
+        ),
+        migrations.AlterField(
+            model_name='entry',
+            name='published',
+            field=models.DateTimeField(default=datetime.datetime(2015, 1, 19, 22, 18, 3, 290104, tzinfo=utc), verbose_name=b'Time Published'),
+            preserve_default=True,
+        ),
+    ]

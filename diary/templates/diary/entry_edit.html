@@ -1,17 +1,31 @@
 {% extends 'base.html' %}
+{% load staticfiles %}
 
 {% block css %}
+	<link rel="stylesheet" type="text/css" href='//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css'>
+	<link rel="stylesheet" type="text/css" href='{% static "library/summernote/summernote.css" %}'>
+	<link rel="stylesheet" type="text/css" href="{% static 'library/rome-date/rome.min.css' %}">
 	<style type="text/css">
 		.form-control, .btn {
 			border-radius: 0;
 			margin-top: 1em;
 		}
 
-		textarea {
-			min-height: 20em;
-			max-width: 100%;
-			resize: none;
+		#time-picker {
+			display: none;
 		}
+
+		.rd-container th {
+			padding: 4px;
+		}
+
+		input[name='subject'] {
+			margin-bottom: 1em;
+		}
+
+		.note-editable {
+			background-color: white;
+		}		
 
 		img {
 			width: 100%;
@@ -22,33 +36,60 @@
 			width: 50%;
 		}
 
-
-
+		textarea {
+			min-height: 20em;
+			max-width: 100%;
+			resize: none;
+		}		
 
 	</style>
 {% endblock css %}
 
 {% block content %}	
+	{# <iframe src="{% url 'diary:test' %}" width = '100%'></iframe> #}
 	{% if entry %}
+		<p><a id = 'toggle-time-picker'>Set Publish Date</a></p>
+		<div class = 'row' id = 'time-picker'>
+			<div class = 'col-md-6'>
+				<input class = 'form-control' id = 'date' name = 'datetimepicker' placeholder = 'Publish Date (Blank for today)'>	
+			</div>
+			<div class = 'col-md-6'>
+				<input class = 'form-control' id = 'time' name = 'datetimepicker' placeholder = 'Publish Time (Blank for Midnight)'>					
+			</div>
+			<div class = 'col-md-12'>
+				<div class = 'btn btn-success' id = 'set-time'>Set</div>				
+			</div>
+		</div>
 		<form id = 'edit-entry-form' action = "{% url 'diary:entry_edit' entry.id %}" method = 'post' enctype="multipart/form-data">
 			{% csrf_token %}
-			<button id = 'delete-entry' class = 'btn btn-danger'>Delete Entry</button>
-			<input type = 'submit' value = 'Update Entry' class = 'btn btn-warning pull-right'>
-			<input class = 'form-control' type = 'text' name = 'entry-subject' value = '{{ entry.subject }}' autocomplete = 'off'>
-			<textarea class = 'form-control' name = 'entry-body'>{{ entry.body}}</textarea>
+			<input class = 'form-control' type = 'text' name = 'subject' value = '{{ entry.subject }}' autocomplete = 'off'>
+			<p id = 'publish-time'></p>
+			<div id = 'summernote'></div>
+			<textarea class = 'form-control' name = 'body'>{{ entry.body }}</textarea>		
 			<input type = 'hidden' value = 'False' name = 'entry-delete'>
-
+			
 			<input class = 'form-control' type = 'hidden' placeholder = 'Selected Photo' name = 'selected-entry-photo'>
+			{# <input class = 'form-control' type = 'file' name = 'new-entry-photo' id = "multi" multiple> #}
+			<input type = 'hidden' name = "invalid-images">			
+			<input id = 'final-date' name = 'timestamp' type = 'hidden'>
 
-			<input class = 'form-control' type = 'file' name = 'new-entry-photo' multiple>
-			{% if entry.entryphoto_set.first != None %}
-				{% for picture in entry.entryphoto_set.all %}
-					{# <h1>{{ picture.id }}</h1> #}
-					<img src="{{picture.image_file.url}}" id = '{{ picture.id }}' >
-				{% endfor%}
-			{% endif %}
+			<div style = 'text-align: right'><a class = 'fake-link' id = 'save-as-draft'><p>{% if entry.is_draft == True %}Update Without Publishing{% else %}Revert to draft{% endif %}</p></a>
+			<input type = 'hidden' name = 'is_draft'>
+
+			<div class = 'row'>
+				<div class = 'col-md-6'>
+					<div id = 'delete-entry' class = 'btn btn-danger btn-block'>Delete</div>
+				</div>
+				<div class = 'col-md-6'>
+					<input type = 'submit' value = 'Update & Publish' class = 'btn btn-warning btn-block'>
+				</div>
+			</div>
 		</form>
-
+		<form id = 'delete-entry-form' action = "{% url 'diary:entry_delete' %}" method = "post">
+			{% csrf_token %}
+			{# ID is required because this form will be posted to another view and handled #}
+			<input name = 'entry-id' type = 'hidden' value = "{{ entry.id }}">			
+		</form>
 
 
 	{% else %}
@@ -59,53 +100,104 @@
 
 {% endblock content %}
 
-{% block script %}
-	{% load staticfiles %}
+{% block script %}	
 	<script type="text/javascript" src = '{% static "library/autosize/jquery.autosize.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "library/summernote/summernote.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "library/moment.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "library/rome-date/rome.min.js" %}'></script>	
+	<script type="text/javascript" src = '{% static "js/entry-editor.js" %}'></script>
+
 	<script type="text/javascript">
-		$(document).ready(function(){
+		$(document).ready(function(){				
+			summernote.code($('textarea[name="body"]').val())
+			$('textarea[name="body"]').hide();
+
+			currentEntry = $('input[name="entry-id"]').val()			
+
 			$('#delete-entry').click(function(){
-				var delEntry = confirm('Delete this diary entry?')
-				if (delEntry) {
-					$("input[name='entry-delete']").val('True')										
-					$('#edit-entry-form').submit()
-					return false
-					
-				}
-
-				else {
-					return false
-				}
-
-
+				var delEntry = confirm('Delete this diary entry?')				
+				if (delEntry) {					
+					$('#delete-entry-form').submit()										
+				}				
 			})
+
+			$('input[type="submit"]').click(function(e){
+				e.preventDefault()					
+				/*if ($('#final-date').val() == ""){
+					//fillPublishTimestamp()
+					$('#final-date').val('asd')
+				}*/
+				var sub = $('input[name = "subject"]').val()
+				var bod = $('textarea[name = "body"]').val()								
+				if (sub.length == 0 && bod.length == 0) {
+					var submitEmptyEntry = confirm("You're about to publish an empty entry, is it ok?")
+					if (!submitEmptyEntry){
+						return
+					}
+				}		
+				$('#edit-entry-form').submit();
+			})			
 
 			$('#edit-entry-form textarea').focus(function(){
 				$(this).autosize();
 			})
+			var pDate = rome(date, {
+				weekStart: 1,
+				time: false,	
+			})		
 
-			$('img').click(function(){				
-				var selectPhotoIDs = $("input[name='selected-entry-photo']").val()				
-				var thisID = $(this).attr('id')
-				var IDs = selectPhotoIDs.split(',')				
-				if (IDs.indexOf(thisID) == -1) {					
-					var photoIDToAdd = thisID + ','
-					selectPhotoIDs += photoIDToAdd
-					$("input[name='selected-entry-photo']").val(selectPhotoIDs)	
-					$(this).addClass('half-size')
-				} 
+			var pTime = rome(time, {			
+				date: false,	
+			})		
 
-				else {
-					/*alert(IDs)
-					alert(IDs)*/
-					IDs.splice(IDs.indexOf(thisID),1)
-					$("input[name='selected-entry-photo']").val(IDs)					
-					$(this).removeClass('half-size')
-				}
+			var dateTimeToTimestamp = function(date, time){
+				// date format 2015-01-27
+				// time format 13:15:55
+				timestamp = date + " " + time
+				timestamp = moment(timestamp).unix()		
+				return timestamp
+			}
+
+			var fillPublishTimestamp = function(){
+				var dateStamp = moment().format('YYYY-MM-DD')
+				var timeStamp = moment().format('HH:mm:ss')
 				
-				
+
+				if (pTime.getDate() != null) {
+					timeStamp = $('#time').val()			
+				}		
+
+				if (pDate.getDate() != null) {
+					dateStamp = $('#date').val()			
+					if (pTime.getDate() == null) {
+						timeStamp = "00:00:00"
+					}
+				}		
+				readableTime = moment(dateStamp + " " + timeStamp).calendar()
+				$('#final-date').val(dateTimeToTimestamp(dateStamp, timeStamp))		
+				return readableTime		
+			}
+
+			$('#toggle-time-picker').click(function(){
+				$('#publish-time').text('')
+				$(this).hide(function(){
+					$('#time-picker').show()					
+				})
 			})
-		})		
+
+			$('#set-time').click(function(){
+				$('#publish-time').text("Publish Date: " + fillPublishTimestamp());
+				$('#toggle-time-picker').text('Change Publish Date');		
+				$('#time-picker').hide();
+				$('#toggle-time-picker').show();		
+			})
+
+			$('#save-as-draft').click(function(){				
+				$('input[name="is_draft"]').val('True')
+				$('input[type="submit"]').click()
+			})
+		})
+
 	</script>
 
 {% endblock script %}

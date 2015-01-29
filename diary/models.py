@@ -7,6 +7,9 @@ from django.template.defaultfilters import slugify
 from django.utils import timezone
 
 from unidecode import unidecode
+from PIL import Image
+from StringIO import StringIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
 import urllib
 import os
 import uuid
@@ -16,28 +19,33 @@ class Entry(models.Model):
 	"""docstring for ClassName"""
 	subject = models.CharField(max_length = 180)
 	body = models.TextField()
-	slug = models.SlugField()
 	author = models.ForeignKey(User)
+	slug = models.SlugField(max_length = 180)
 	
-	published = models.DateTimeField('Time Published', default= timezone.now())
-	edited = models.DateTimeField('Time Edited', default=timezone.now())
+	published = models.DateTimeField('Time Published', default= timezone.now)
+	edited = models.DateTimeField('Time Edited', default=timezone.now)
 	is_draft = models.BooleanField(default=True)
-	is_public = models.BooleanField(default=False)
+
+	
 
 	def __unicode__(self):
 		return self.subject
 
 
 	def make_slug(self):
-		""" create slug using self.subject """
-		sub = self.subject
-
-		#if type(sub) == 'unicde':
+		""" create slug using self.subject """		
+		sub = self.subject		
+		if len(self.subject) == 0:
+			self.subject = sub = "Untitled"
 		sub = unidecode(sub)
 		sub = slugify(sub)		
 		self.slug = slugify(sub)
 
-		return sub
+	def save(self,*args, **kwargs):				
+		self.make_slug()		
+		super(Entry, self).save(*args, **kwargs)	
+
+		
 
 	def update_last_edited_time(self):
 		""" update edited field 
@@ -95,21 +103,77 @@ class Entry(models.Model):
 			if self.delete_photoset_image(photoID): #successfully deleted
 				#print "EntryPhoto with Primary Key: %i is deleted" % photoID
 				continue
-			else:
-				#pass
-				raise self.DoesNotExist				
+			else:				
 				#print 'Photo not in entryphoto_set, deletion failed'
+				raise self.DoesNotExist				
+				break	
 
-	def add_entryphoto(self, images_list):		
+
+	def filter_javascript_invalid(self,uploads,invalids):
+		""" 
+		Takes a list of uploaded item  and a list of invalid items reported by javascript
+		return list of qualified items
+
+		"""		
+		cleaned_files = [] 		
+
+		for item in uploads:					
+			if item.name not in invalids: #only process js validated images on server to save resource										
+				cleaned_files.append(item)
+
+		return cleaned_files
+
+
+	def process_entryphoto(self, image):
+		""" 
+		Takes an image file and validate, compress and convert it,
+		returns the result.
+		"""		
+		if image.size/1024.0/1024 > 50: #MB
+			return "Too Big", image.name
+		
+		acceptedPILFormat = ['JPEG','PNG','BMP','GIF']
+
+		try:
+			img = Image.open(image)
+		except IOError:
+			return "Cannot Open", image.name
+		else:
+			if img.format in acceptedPILFormat:
+				img.thumbnail((1024,1024), Image.ANTIALIAS)
+				imageString = StringIO()				
+				if img.mode != 'RGB':
+					name = ('temp.' + img.format).lower()
+					img.save(imageString,format = img.format, optimize = True)
+					imagefile = InMemoryUploadedFile(imageString, None, name, 'image/jpeg', imageString.len, None)					
+				else:
+					img.save(imageString,format = "JPEG", optimize = True)
+					imagefile = InMemoryUploadedFile(imageString, None, 'temp_name.jpg', 'image/jpeg', imageString.len, None)
+				#newPhoto = EntryPhoto.objects.create(image_file = imagefile, article = self)		
+				return True, imagefile				
+			else:
+				return "Invalid Format", image.name 
+		
+
+	def add_entryphoto(self, images_list):		#not using this method to add photo anymore.
+		invalid_image = 0
 		for image in images_list:				
-			newPhoto = EntryPhoto.objects.create(image_file = image, article = self)
+			if self.save_entryphoto(image):
+				continue
+			else:
+				invalid_image += 1					
+				#raise BaseException
+
+		if invalid_image == 0:
+			return 'all uploaded'
+
+		return invalid_image
 
 	def self_destruction(self):
 		photoIDs = [image.id for image in self.entryphoto_set.all()]
 		print photoIDs
 		self.remove_entry_photos_by_ids(photoIDs)
 		self.delete()
-
 
 
 def uuid_filename(instance, filename):
@@ -121,4 +185,9 @@ class EntryPhoto(models.Model):
 	article = models.ForeignKey(Entry)	
 	image_file = models.ImageField(upload_to = uuid_filename)
 
-	#def erase_photo(self,id)
+class UserUploadedPhoto(models.Model):
+	uploader = models.ForeignKey(User)
+	image_file = models.ImageField(upload_to = uuid_filename)
+
+	def __unicode__(self):
+		return unicode(self.image_file.url)

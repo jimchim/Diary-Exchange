@@ -10,6 +10,7 @@
 		img {
 			width: 100%;
 		}
+		
 	</style>
 
 {% endblock css %}
@@ -17,11 +18,10 @@
 {% block content %}
 	<span id = 'entries'> 
 	{% for entry in entries %}
+	<div class = 'entry-summary break-words'>
 		<h1><a href="{% url 'diary:entry_slug' entry.id entry.slug  %}">{{ entry.subject }}</a></h1>
-		<p>{{ entry.body|linebreaks|truncatechars:300 }}</p>		
-		{% if not entry.entryphoto_set.first == None %}
-			<img src="{{ entry.entryphoto_set.first.image_file.url }}">
-		{% endif %}
+		<p>{{ entry.body|safe|linebreaks|truncatechars:300 }}</p>				
+	</div>
 	{% endfor %}
 	</span>
 	{# {{ message|safe }} #}

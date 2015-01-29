@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load staticfiles%}
+{% block css %}
+	<style type="text/css">
+		.stickers {
+			display: inline-block;
+			width: 13%;
+		}
+
+
+
+		.stickers p {
+			word-break: break-all;
+		}
+
+
+
+	</style>
+{% endblock css %}
+
+{% block content %}	
+	<div><button id = 'debug2'>Debug</button></div>
+	{% for file in files %}
+		<div class = 'stickers'>
+			<a data-clipboard-text="{{ MEDIA_URL }}stickers/{{file}}" href="{{ MEDIA_URL }}stickers/{{file}}" target="_blank" title = 'click to copy'><img src = '{{ MEDIA_URL }}/compressed/{{file}}' width = '100%'></a>			
+		</div>		
+	{% endfor %}
+{% endblock content %}
+
+{% block script %}
+	<script type="text/javascript" src = '{% static "library/zeroclipboard/ZeroClipboard.js" %}'></script>
+	<script type="text/javascript">
+		$(document).ready(function(){
+			var currentSticker = ""
+			$('#debug').click(function(){
+				$('#copy').attr('data-clipboard-text', "Copy Me!")				
+
+			})
+			ZeroClipboard.config( { swfPath: "/media/ZeroClipboard.swf" } )
+			var clipboard = new ZeroClipboard($('.stickers a'));
+			clipboard.on('ready',function(readyEvent){
+				console.log( "ZeroClipboard SWF is ready!" );
+				/*client.on('aftetcopy', function(readyEvent){
+					readyEvent.target.style.display = "none";
+					alert("Copied text to clipboard: " + readyEvent.data["text/plain"] );
+				})*/
+			})
+
+			clipboard.on('aftercopy', function(){
+				var text = ZeroClipboard.getData()
+				console.log(text)
+				
+			})
+			$('.stickers a').click(function(e){
+				e.preventDefault()
+				currentSticker = $(this).attr('href')
+				$('#debug').click()
+			})
+
+			$('#debug2').click(function(){
+				var text = clipboard.getData('text/plain')
+				console.log(text)
+			})
+		})
+
+	</script>
+{% endblock script %}

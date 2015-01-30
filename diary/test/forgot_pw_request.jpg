@@ -1,0 +1,66 @@
+<!DOCTYPE HTML>
+<?php 
+require_once('setup.php'); 
+if(isset($_GET["pw_key"]) && isset($_GET["uid"])){
+    $pw_key=$_GET["pw_key"];
+    $uid=$_GET["uid"];
+}else{
+    echo "Error!";
+    exit();
+}
+?>
+<html>
+<head>
+	<title>Getalogue</title>
+        <?php require("css.html"); ?>
+</head>	
+<body>
+<div id = 'template-wrapper'>
+	<?php require 'header.php'; ?>
+
+	<div id='body'>
+		<div class='container-fluid'>
+			<div class = 'row col-md-10 col-md-offset-1'>
+				<div class = 'row'>
+					<h1>Reset Password</h1>
+				</div>
+				<div class = 'row' style = 'border: 1px solid black; background-color:white;min-height:30em;padding-top:5em;padding-left:5em;padding-right:5em;'>
+                                        <form id="forgot_pw_form" autocomplete="off">
+                                            <div><input type="text" name="new_pw" class="new_pw" placeholder="New Password"/></div>
+                                            <div><input type="text" name="confirm_pw" class="confirm_pw" placeholder="Confirm Password"/></div>
+                                            <br/>
+                                             <div>
+                                                 <input type="hidden" name="uid" value="<?php echo $uid; ?>" />
+                                                 <input type="hidden" name="pw_key" value="<?php echo $pw_key; ?>" />
+                                                 <button type='button' id="submit">Submit</button>
+                                            </div>
+                                        </form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<?php require 'footer.php'; ?>
+</div><!-- end container -->
+<?php require("js.html"); ?>
+<script type="text/javascript">
+    $('#submit').click(function(){
+        var formData = $('#forgot_pw_form').serialize();
+         $.ajax({
+                type: 'POST',
+                url: 'forgot_pw_request_check.php',
+                data: formData,
+                success: function(msg) {
+                    if(msg=='success'){
+                        BootstrapDialog.show({message: '<?=get_string('forgotpw_request:successcontent', 'forgotpw')?>',title:'<?=get_string('forgotpw_request:successtitle', 'forgotpw')?>'})
+                    }else{
+                        BootstrapDialog.show({message: msg,title:'<?=get_string('errortitle', 'forgotpw')?>'})
+                    }
+                } 
+            });
+       e.preventDefault(); 
+    });
+</script>
+</body>
+
+
+</html>

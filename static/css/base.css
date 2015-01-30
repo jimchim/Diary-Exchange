@@ -80,3 +80,7 @@
 .fake-link {
 	cursor: pointer;
 }
+
+.btn {
+	border-radius: 0;
+}
